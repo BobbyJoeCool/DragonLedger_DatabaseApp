@@ -1,0 +1,30 @@
+{
+  "name": "dragonledger-databaseapp",
+  "private": true,
+  "version": "0.0.0",
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev:client": "npm run dev --workspace=client",
+    "dev:server": "npm run dev --workspace=server",
+    "build": "npm run build --workspace=client",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspace=server --if-present",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "ping:db": "tsx test/ping-db.ts",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:studio": "prisma studio"
+  },
+  "devDependencies": {
+    "@prisma/client": "^6.19.3",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.8.4",
+    "prisma": "^6.19.3",
+    "tsx": "^4.22.4"
+  }
+}
