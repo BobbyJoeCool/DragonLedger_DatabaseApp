@@ -3,7 +3,10 @@ import { dirname, resolve } from 'path'
 import { fileURLToPath } from 'url'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const LOGS_DIR = resolve(__dirname, '../../../DevTools/Logs')
+// Electron sets LOG_DIR to app.getPath('logs') — the compiled file's own
+// location has no DevTools/ sibling once packaged. Falls back to the normal
+// dev/test-relative path when unset.
+const LOGS_DIR = process.env.LOG_DIR ?? resolve(__dirname, '../../../DevTools/Logs')
 const LOG_FILE = resolve(LOGS_DIR, 'server.log')
 
 function write(level: string, message: string): void {

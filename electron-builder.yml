@@ -1,0 +1,33 @@
+appId: com.dragonledger.databaseapp
+productName: DragonLedger
+directories:
+  app: electron
+  output: release
+asar: false
+files:
+  - dist/**/*
+  - package.json
+extraResources:
+  - from: server/dist
+    to: server/dist
+  - from: server/package.json
+    to: server/package.json
+  - from: client/dist
+    to: client/dist
+  - from: prisma/schema.prisma
+    to: prisma/schema.prisma
+  - from: prisma/migrations
+    to: prisma/migrations
+  # electron-builder's default file filters exclude dot-prefixed directories,
+  # which silently drops @prisma/client's generated output (query engine +
+  # client code) even though prisma/@prisma/express/cors get auto-included.
+  # Copy it explicitly as a sibling in app's own node_modules so Node's normal
+  # module resolution (walking up from node_modules/@prisma/client) finds it.
+  - from: node_modules/.prisma
+    to: app/node_modules/.prisma
+mac:
+  target:
+    - dmg
+    - zip
+  category: public.app-category.utilities
+  identity: null

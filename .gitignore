@@ -5,6 +5,7 @@ node_modules/
 dist/
 dist-ssr/
 build/
+release/
 
 # TypeScript
 *.tsbuildinfo
@@ -61,6 +62,3 @@ _work/
 .DS_Store
 .AppleDouble
 .LSOverride
-
-# Local planning docs
-Outline.md

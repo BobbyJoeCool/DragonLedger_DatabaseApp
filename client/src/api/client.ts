@@ -1,5 +1,3 @@
-const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
-
 const MUTATING = new Set(['POST', 'PATCH', 'PUT', 'DELETE'])
 
 export async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
@@ -14,5 +12,5 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
     if (password) headers['x-app-password'] = password
   }
 
-  return fetch(`${BASE}${path}`, { ...init, headers })
+  return fetch(path, { ...init, headers })
 }
