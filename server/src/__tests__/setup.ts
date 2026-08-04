@@ -7,7 +7,6 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 // server/src/__tests__ → ../../../ = project root
 const ROOT = resolve(__dirname, '../../..')
 
-config({ path: resolve(ROOT, 'prisma/.env') })
 config({ path: resolve(ROOT, '.env') })
 
 const LOGS_DIR = resolve(ROOT, 'DevTools/Tests')

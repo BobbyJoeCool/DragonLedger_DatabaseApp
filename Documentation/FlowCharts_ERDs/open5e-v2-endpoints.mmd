@@ -1,0 +1,75 @@
+graph TD
+    DOC["/v2/documents/<br/>Source books (srd-2024, a5e, tob, etc.)<br/>DOCS-ONLY"]
+
+    subgraph CharBuilding["Character Building"]
+        CLS["/v2/classes/<br/>Classes AND Subclasses<br/>(discriminated by subclass_of: null/object)<br/>CONFIRMED: GitHub release history"]
+        SPE["/v2/species/<br/>Races AND Subspecies<br/>(discriminated by is_subspecies)<br/>CONFIRMED: GitHub release history"]
+        BKG["/v2/backgrounds/<br/>benefits[] typed array<br/>DOCS-ONLY"]
+        FEAT["/v2/feats/<br/>standalone feats<br/>CONFIRMED: GitHub release history"]
+    end
+
+    subgraph SpellsGroup["Spells"]
+        SPL["/v2/spells/<br/>classes[] back-reference<br/>DOCS-ONLY (direct fetch attempt 404'd on slug format)"]
+    end
+
+    subgraph Equipment["Equipment"]
+        ITM["/v2/items/<br/>PRIMARY item source<br/>embeds weapon + armor objects<br/>DOCS-ONLY"]
+        WPN["/v2/weapons/<br/>standalone weapon stats<br/>DOCS-ONLY"]
+        ARM["/v2/armor/<br/>standalone armor stats<br/>DOCS-ONLY"]
+        MAGIC["/v2/magicitems/<br/>rarity + attunement<br/>same weapon/armor shape as items<br/>CONFIRMED: GitHub release (added in #835)"]
+    end
+
+    subgraph CreaturesGroup["Creatures"]
+        CRT["/v2/creatures/<br/>embeds actions[] + traits[]<br/>VERIFIED LIVE THIS SESSION"]
+    end
+
+    subgraph Mechanics["Game Mechanics"]
+        COND["/v2/conditions/<br/>descriptions[] per gamesystem<br/>DOCS-ONLY"]
+        RULES["/v2/rulesets/<br/>e.g. srd_combat-sequence<br/>~56 SRD-2024 sections<br/>DOCS-ONLY, seen in release notes"]
+    end
+
+    SRCH["/v2/search/?query=...<br/>cross-type search<br/>DOCS-ONLY"]
+
+    IMPORTANT["v1 and v2 are NOT the same content:<br/>v2 = SRD 2024, this project's target<br/>v1 = SRD 2014 + most 3rd-party books<br/>Confirmed by direct fetch: /v1/classes/ returned<br/>old flat shape; /v2/creatures/?document__key__in=srd-2024<br/>returned the rich nested shape Heroes documented."]
+
+    %% Document is referenced by every content type
+    DOC -. "document.key" .-> CLS
+    DOC -. "document.key" .-> SPE
+    DOC -. "document.key" .-> BKG
+    DOC -. "document.key" .-> FEAT
+    DOC -. "document.key" .-> SPL
+    DOC -. "document.key" .-> ITM
+    DOC -. "document.key" .-> CRT
+    DOC -. "document.key" .-> COND
+
+    %% Self-referencing / embedded structures
+    CLS -->|"subclass_of.key resolves to"| CLS
+    SPE -->|"subspecies_of resolves to"| SPE
+    CLS -->|"features[] inline"| CLS
+    SPE -->|"traits[] inline"| SPE
+    BKG -->|"benefits[] inline"| BKG
+    CRT -->|"actions[] inline"| CRT
+    CRT -->|"traits[] inline"| CRT
+
+    %% Items embed weapon/armor sub-objects
+    ITM -.->|"weapon: {...} or null"| WPN
+    ITM -.->|"armor: {...} or null"| ARM
+    MAGIC -.->|"same weapon shape"| WPN
+    MAGIC -.->|"same armor shape"| ARM
+
+    SPL -.->|"classes[].key references"| CLS
+
+    DOC -. "document.key" .-> RULES
+    DOC -. "document.key" .-> MAGIC
+
+    classDef verified fill:#d4edda,stroke:#28a745,color:#155724;
+    classDef confirmed fill:#cce5ff,stroke:#007bff,color:#004085;
+    classDef unverified fill:#fff3cd,stroke:#ffc107,color:#856404;
+    classDef neutral fill:#e2e3e5,stroke:#6c757d,color:#383d41;
+    classDef warning fill:#f8d7da,stroke:#dc3545,color:#721c24;
+
+    class CRT verified;
+    class CLS,SPE,FEAT,MAGIC confirmed;
+    class BKG,SPL,ITM,WPN,ARM,COND,RULES unverified;
+    class DOC,SRCH neutral;
+    class IMPORTANT warning;

@@ -1,0 +1,144 @@
+erDiagram
+    SOURCE ||--o{ CONTENT_SPELL : contains
+    SOURCE ||--o{ CONTENT_CLASS : contains
+    SOURCE ||--o{ CONTENT_SUBCLASS : contains
+    SOURCE ||--o{ CONTENT_RACE : contains
+    SOURCE ||--o{ CONTENT_BACKGROUND : contains
+    SOURCE ||--o{ CONTENT_CONDITION : contains
+    SOURCE ||--o{ CONTENT_ITEM : contains
+    SOURCE ||--o{ CONTENT_MONSTER : contains
+    CONTENT_CLASS ||--o{ CONTENT_SUBCLASS : "has subclasses"
+
+    SOURCE {
+        string id PK "human-assigned, e.g. open5e-srd-2024"
+        string name
+        SourceType type
+        string description
+        datetime lastUpdated
+        boolean isDeletable
+    }
+
+    CONTENT_SPELL {
+        string id PK "cuid"
+        string slug "unique within sourceId"
+        string sourceId FK
+        string name
+        int level
+        string school
+        string castingTime
+        string range
+        string components
+        string material
+        string duration
+        boolean concentration
+        boolean ritual
+        string classes "JSON array"
+        string description
+        string higherLevels
+        string extraData "JSON escape hatch"
+    }
+
+    CONTENT_CLASS {
+        string id PK "cuid"
+        string slug "unique within sourceId"
+        string sourceId FK
+        string name
+        int hitDie
+        string primaryAbility
+        string savingThrows "JSON array"
+        string armorProfs "JSON array"
+        string weaponProfs "JSON array"
+        string skillChoices "JSON object"
+        string spellcastingAbility
+        string description
+        string extraData "JSON escape hatch"
+    }
+
+    CONTENT_SUBCLASS {
+        string id PK "cuid"
+        string slug "unique within sourceId"
+        string sourceId FK
+        string classId FK "onDelete NoAction"
+        string name
+        string description
+        string extraData "JSON escape hatch"
+    }
+
+    CONTENT_RACE {
+        string id PK "cuid"
+        string slug "unique within sourceId"
+        string sourceId FK
+        string name
+        string size
+        string speed "JSON object"
+        string traits "JSON array"
+        string description
+        string extraData "JSON escape hatch"
+    }
+
+    CONTENT_BACKGROUND {
+        string id PK "cuid"
+        string slug "unique within sourceId"
+        string sourceId FK
+        string name
+        string skillProficiencies "JSON array"
+        string toolProficiencies "JSON array"
+        string abilityBonuses "JSON object"
+        string feature "JSON object"
+        string description
+        string extraData "JSON escape hatch"
+    }
+
+    CONTENT_CONDITION {
+        string id PK "cuid"
+        string slug "unique within sourceId"
+        string sourceId FK
+        string name
+        string description
+        string effects "JSON array"
+        string extraData "JSON escape hatch"
+    }
+
+    CONTENT_ITEM {
+        string id PK "cuid"
+        string slug "unique within sourceId"
+        string sourceId FK
+        string name
+        string itemType "indexed"
+        string rarity "indexed"
+        boolean requiresAttunement
+        string cost
+        string weight
+        string damage
+        string armorClass
+        string properties "JSON array"
+        string description
+        string extraData "JSON escape hatch"
+    }
+
+    CONTENT_MONSTER {
+        string id PK "cuid"
+        string slug "unique within sourceId"
+        string sourceId FK
+        string name
+        string size
+        string monsterType "indexed"
+        string alignment
+        int armorClass
+        int hitPoints
+        string hitDice
+        string speed "JSON object"
+        string abilityScores "JSON object"
+        string savingThrows "JSON object"
+        string skills "JSON object"
+        string damageResistances "JSON array"
+        string damageImmunities "JSON array"
+        string conditionImmunities "JSON array"
+        string senses
+        string languages
+        string challengeRating "indexed"
+        string actions "JSON array"
+        string legendaryActions "JSON array"
+        string description
+        string extraData "JSON escape hatch"
+    }
