@@ -6,3 +6,282 @@ datasource db {
   provider = "sqlite"
   url      = env("DATABASE_URL")
 }
+
+enum SourceType {
+  API
+  FILE
+  MANUAL
+}
+
+enum ImportJobType {
+  OPEN5E
+  FILE
+}
+
+enum ImportJobStatus {
+  PENDING
+  AWAITING_CONFIRMATION
+  RUNNING
+  COMPLETED
+  FAILED
+  PARTIAL
+}
+
+model Source {
+  id          String     @id
+  name        String
+  type        SourceType
+  description String?
+  lastUpdated DateTime
+  isDeletable Boolean
+
+  spells       ContentSpell[]
+  classes      ContentClass[]
+  subclasses   ContentSubclass[]
+  races        ContentRace[]
+  subraces     ContentSubrace[]
+  backgrounds  ContentBackground[]
+  conditions   ContentCondition[]
+  items        ContentItem[]
+  monsters     ContentMonster[]
+  feats        ContentFeat[]
+  classOptions ContentClassOption[]
+  importJobs   ImportJob[]
+}
+
+model ImportJob {
+  id             String          @id @default(cuid())
+  sourceId       String
+  source         Source          @relation(fields: [sourceId], references: [id])
+  jobType        ImportJobType
+  contentTypes   String // JSON array, e.g. ["SPELL","ITEM"]
+  status         ImportJobStatus @default(PENDING)
+  totalItems     Int?
+  processedItems Int             @default(0)
+  errorLog       String? // JSON array of { contentType, message }
+  startedAt      DateTime        @default(now())
+  completedAt    DateTime?
+}
+
+model ContentSpell {
+  id            String  @id @default(cuid())
+  slug          String
+  sourceId      String
+  source        Source  @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  name          String
+  level         Int
+  school        String
+  castingTime   String
+  range         String
+  components    String
+  material      String?
+  duration      String
+  concentration Boolean
+  ritual        Boolean
+  classes       String // JSON array of class display names
+  description   String
+  higherLevels  String?
+  extraData     String? // castingOptions, damageRoll, damageTypes, savingThrow,
+  // attackRoll, targetType/targetCount, shape info, reactionCondition,
+  // materialCost, materialConsumed
+
+  @@unique([sourceId, slug])
+  @@index([level])
+  @@index([school])
+}
+
+model ContentClass {
+  id                  String  @id @default(cuid())
+  slug                String
+  sourceId            String
+  source              Source  @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  name                String
+  hitDie              Int
+  primaryAbility      String // JSON: { abilities: string[], logic: "AND"|"OR" }
+  savingThrows        String // JSON array
+  armorProfs          String // JSON array
+  weaponProfs         String // JSON array
+  skillChoices        String // JSON, Fixed/Choice Grant Shape
+  spellcastingAbility String?
+  description         String
+  extraData           String? // casterType, features[] (name/description/type/levels)
+
+  subclasses   ContentSubclass[]
+  classOptions ContentClassOption[]
+
+  @@unique([sourceId, slug])
+}
+
+model ContentSubclass {
+  id          String        @id @default(cuid())
+  slug        String
+  sourceId    String
+  source      Source        @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  classId     String? // nullable per Phase 4 — was required with onDelete: NoAction originally
+  class       ContentClass? @relation(fields: [classId], references: [id], onDelete: SetNull)
+  name        String
+  description String
+  extraData   String? // features[]; unresolvedClassName if cross-source resolution (see Compendium docs) fails
+
+  @@unique([sourceId, slug])
+}
+
+model ContentRace {
+  id          String  @id @default(cuid())
+  slug        String
+  sourceId    String
+  source      Source  @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  name        String
+  size        String // JSON array, e.g. ["medium"] or ["small","medium"]
+  speed       String // JSON, { walk, fly?, swim? }
+  traits      String // JSON array of { name, description, level, grant? }
+  description String
+  extraData   String?
+
+  parentRaceId String?
+  parentRace   ContentRace?     @relation("RaceSubspecies", fields: [parentRaceId], references: [id], onDelete: NoAction)
+  subspecies   ContentRace[]    @relation("RaceSubspecies")
+  subraces     ContentSubrace[]
+
+  @@unique([sourceId, slug])
+}
+
+model ContentSubrace {
+  id          String       @id @default(cuid())
+  slug        String
+  sourceId    String
+  source      Source       @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  raceId      String? // nullable per Phase 4 — was required with onDelete: NoAction originally
+  race        ContentRace? @relation(fields: [raceId], references: [id], onDelete: SetNull)
+  name        String
+  description String?
+  size        String? // JSON array, null unless this subrace overrides the parent's
+  speed       String? // JSON, null unless overridden
+  traits      String // JSON array, same shape as ContentRace.traits
+  extraData   String? // unresolvedRaceName if cross-source resolution (see Compendium docs) fails
+
+  @@unique([sourceId, slug])
+}
+
+model ContentBackground {
+  id             String  @id @default(cuid())
+  slug           String
+  sourceId       String
+  source         Source  @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  name           String
+  proficiencies  String // JSON, Fixed/Choice Grant Shape, entries tagged category: "skill"|"tool"
+  abilityBonuses String // JSON, Fixed/Choice Grant Shape (fixed is an object, not array)
+  feature        String // JSON array of { name, description }
+  description    String
+  extraData      String? // languages, equipment, unrecognizedBenefits[], flavor text
+
+  @@unique([sourceId, slug])
+}
+
+model ContentCondition {
+  id          String  @id @default(cuid())
+  slug        String
+  sourceId    String
+  source      Source  @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  name        String
+  description String
+  effects     String?
+  extraData   String? // descriptionSource/requestedSource (when a fallback was used), icon
+
+  @@unique([sourceId, slug])
+}
+
+model ContentItem {
+  id                 String  @id @default(cuid())
+  slug               String
+  sourceId           String
+  source             Source  @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  name               String
+  itemType           String
+  rarity             String?
+  requiresAttunement Boolean
+  cost               String?
+  weight             String?
+  damage             String?
+  armorClass         String?
+  properties         String? // JSON array of { name, detail? }
+  description        String
+  extraData          String? // size, range, isSimple/isMartial/isImprovised,
+  // stealthDisadvantage, maxDexBonus, addDexMod, strRequired,
+  // acDisplay, attunementDetail
+
+  @@unique([sourceId, slug])
+  @@index([itemType])
+  @@index([rarity])
+}
+
+model ContentMonster {
+  id                    String  @id @default(cuid())
+  slug                  String
+  sourceId              String
+  source                Source  @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  name                  String
+  size                  String
+  monsterType           String
+  alignment             String
+  armorClass            Int
+  hitPoints             Int
+  hitDice               String
+  speed                 String // JSON
+  abilityScores         String // JSON
+  savingThrows          String?
+  skills                String?
+  damageResistances     String?
+  damageImmunities      String?
+  damageVulnerabilities String?
+  conditionImmunities   String?
+  senses                String?
+  languages             String?
+  challengeRating       String
+  actions               String // JSON array, each tagged actionType: "action"|"bonus"|"reaction"
+  legendaryActions      String?
+  description           String?
+  extraData             String? // armorClassDetail, lairActions, traits[], spellcasting,
+  // proficiencyBonus, legendaryResistances, experiencePoints,
+  // category/subcategory
+
+  @@unique([sourceId, slug])
+  @@index([challengeRating])
+  @@index([monsterType])
+}
+
+model ContentFeat {
+  id           String  @id @default(cuid())
+  slug         String
+  sourceId     String
+  source       Source  @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  name         String
+  category     String // "GENERAL" | "ORIGIN" | "FIGHTING_STYLE" | "EPIC_BOON" | "CLASS_SPECIFIC"
+  prerequisite String?
+  description  String
+  extraData    String? // benefits[] (Open5e only), special, modifiers[]
+
+  @@unique([sourceId, slug])
+}
+
+model ContentClassOption {
+  id           String        @id @default(cuid())
+  slug         String
+  sourceId     String
+  source       Source        @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  classId      String?
+  class        ContentClass? @relation(fields: [classId], references: [id], onDelete: SetNull)
+  pool         String // "Metamagic" | "Eldritch Invocation" | "Maneuver" | future pools
+  name         String
+  description  String
+  prerequisite String?
+  extraData    String?
+
+  @@unique([sourceId, slug])
+}
+
+model Language {
+  id       String @id @default(cuid())
+  name     String @unique
+  category String // "common" | "exotic" | "secret"
+}

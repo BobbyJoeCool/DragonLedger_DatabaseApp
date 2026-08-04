@@ -3,6 +3,7 @@ import express from 'express'
 import cors from 'cors'
 import { healthRouter } from './routes/health.js'
 import { authRouter } from './routes/auth.js'
+import { sourcesRouter } from './routes/sources.js'
 import { errorHandler } from './middleware/errorHandler.js'
 import { logger } from './lib/logger.js'
 
@@ -30,6 +31,7 @@ app.use((_req, _res, next) => next())
 
 app.use('/api', healthRouter)
 app.use('/api/auth', authRouter)
+app.use('/api/sources', sourcesRouter)
 
 // Single-process production mode (Phase 0.7): when CLIENT_DIST_DIR is set,
 // Express serves the built React app alongside its own API routes on one

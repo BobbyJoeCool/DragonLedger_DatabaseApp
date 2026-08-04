@@ -48,21 +48,21 @@ outline.md's Open Questions appendix — resolve that first rather than guessing
 
 ## Phase 1 — Schema & Sources
 
-- [ ] Update `schema.prisma` with the full current model set (Source, ImportJob,
+- [x] Update `schema.prisma` with the full current model set (Source, ImportJob,
       ContentSpell, ContentClass, ContentSubclass, ContentRace, ContentSubrace,
       ContentBackground, ContentCondition, ContentItem, ContentMonster,
       ContentFeat, ContentClassOption, Language) per Appendix A
-- [ ] Set correct `onDelete` behavior per relation: `Cascade` (Source → content),
+- [x] Set correct `onDelete` behavior per relation: `Cascade` (Source → content),
       `SetNull` (ContentSubclass.classId, ContentSubrace.raceId, ContentClassOption.classId),
       `NoAction` (ContentRace.parentRaceId self-relation)
-- [ ] Run `prisma migrate dev --name init`
-- [ ] Seed script: `homebrew` Source row (`isDeletable: false`) + `Language` table
+- [x] Run `prisma migrate dev --name init`
+- [x] Seed script: `homebrew` Source row (`isDeletable: false`) + `Language` table
       (common: Common, Dwarvish, Elvish, Giant, Gnomish, Goblin, Halfling, Orc;
       exotic: Abyssal, Celestial, Deep Speech, Draconic, Infernal, Primordial +
       Aquan/Auran/Ignan/Terran, Sylvan, Undercommon; secret: Druidic, Thieves' Cant)
-- [ ] Build `GET/POST /api/sources`, `GET /api/sources/:id`, `DELETE /api/sources/:id`
+- [x] Build `GET/POST /api/sources`, `GET /api/sources/:id`, `DELETE /api/sources/:id`
       (400 if `isDeletable: false`; include `warnings` array for orphaned dependents)
-- [ ] Write Phase 1 tests (source CRUD, cascade delete, protected-source delete rejection)
+- [x] Write Phase 1 tests (source CRUD, cascade delete, protected-source delete rejection)
 
 ---
 
