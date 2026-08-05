@@ -1,0 +1,198 @@
+{
+  "count": 1,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "key": "srd-2024_archmage",
+      "name": "Archmage",
+      "document": {
+        "name": "System Reference Document 5.2",
+        "key": "srd-2024",
+        "type": "SOURCE",
+        "display_name": "5e 2024 Rules",
+        "publisher": { "name": "Wizards of the Coast", "key": "wizards-of-the-coast" },
+        "gamesystem": { "name": "5th Edition 2024", "key": "5e-2024" },
+        "permalink": "https://dnd.wizards.com/resources/systems-reference-document"
+      },
+      "type": { "name": "Humanoid", "key": "humanoid" },
+      "size": { "name": "Small", "key": "small" },
+      "challenge_rating": 12.0,
+      "proficiency_bonus": null,
+      "speed": { "walk": 30, "unit": "feet" },
+      "speed_all": {
+        "unit": "feet",
+        "walk": 30,
+        "crawl": 15,
+        "hover": false,
+        "fly": 0,
+        "burrow": 0,
+        "climb": 15,
+        "swim": 15
+      },
+      "category": "Monsters",
+      "subcategory": null,
+      "alignment": "neutral",
+      "languages": {
+        "as_string": "Common plus five other languages",
+        "data": [{ "name": "Common", "key": "common", "desc": "Typical speakers are Humans." }]
+      },
+      "armor_class": 17,
+      "armor_detail": "natural armor",
+      "hit_points": 170,
+      "hit_dice": "31d8 + 31",
+      "experience_points": 8400,
+      "ability_scores": {
+        "strength": 10,
+        "dexterity": 14,
+        "constitution": 12,
+        "intelligence": 20,
+        "wisdom": 15,
+        "charisma": 16
+      },
+      "modifiers": {
+        "strength": 0,
+        "dexterity": 2,
+        "constitution": 1,
+        "intelligence": 5,
+        "wisdom": 2,
+        "charisma": 3
+      },
+      "initiative_bonus": 7,
+      "saving_throws": {
+        "strength": 0,
+        "dexterity": 2,
+        "constitution": 1,
+        "intelligence": 9,
+        "wisdom": 6,
+        "charisma": 3
+      },
+      "saving_throws_all": {
+        "strength": 0,
+        "dexterity": 2,
+        "constitution": 1,
+        "intelligence": 9,
+        "wisdom": 6,
+        "charisma": 3
+      },
+      "skill_bonuses": { "arcana": 13, "history": 9, "perception": 6 },
+      "skill_bonuses_all": {
+        "acrobatics": 2,
+        "animal_handling": 2,
+        "arcana": 13,
+        "athletics": 0,
+        "deception": 3,
+        "history": 9,
+        "insight": 2,
+        "intimidation": 3,
+        "investigation": 5,
+        "medicine": 2,
+        "nature": 5,
+        "perception": 6,
+        "performance": 3,
+        "persuasion": 3,
+        "religion": 5,
+        "sleight_of_hand": 2,
+        "stealth": 2,
+        "survival": 2
+      },
+      "passive_perception": 16,
+      "resistances_and_immunities": {
+        "damage_immunities_display": "psychic",
+        "damage_immunities": [{ "name": "Psychic", "key": "psychic" }],
+        "damage_resistances_display": "",
+        "damage_resistances": [],
+        "damage_vulnerabilities_display": "",
+        "damage_vulnerabilities": [],
+        "condition_immunities_display": "charmed",
+        "condition_immunities": [{ "name": "Charmed", "key": "charmed" }]
+      },
+      "normal_sight_range": 10560,
+      "darkvision_range": null,
+      "blindsight_range": null,
+      "tremorsense_range": null,
+      "truesight_range": null,
+      "actions": [
+        {
+          "name": "Arcane Burst",
+          "desc": "Melee or Ranged Attack Roll: +9, reach 5 ft. or range 150 ft. 27 (4d10 + 5) Force damage.",
+          "attacks": [
+            {
+              "name": "Arcane Burst attack",
+              "attack_type": "WEAPON",
+              "to_hit_mod": 9,
+              "reach": 5,
+              "range": 150,
+              "long_range": null,
+              "target_creature_only": false,
+              "damage_die_count": 4,
+              "damage_die_type": "D10",
+              "damage_bonus": 5,
+              "damage_type": null,
+              "extra_damage_die_count": null,
+              "extra_damage_die_type": null,
+              "extra_damage_bonus": null,
+              "extra_damage_type": { "name": "Force", "key": "force" },
+              "distance_unit": "feet"
+            }
+          ],
+          "action_type": "ACTION",
+          "order_in_statblock": 1,
+          "legendary_action_cost": 1,
+          "limited_to_form": null,
+          "usage_limits": null
+        },
+        {
+          "name": "Multiattack",
+          "desc": "The archmage makes four Arcane Burst attacks.",
+          "attacks": [],
+          "action_type": "ACTION",
+          "order_in_statblock": 0,
+          "legendary_action_cost": 1,
+          "limited_to_form": null,
+          "usage_limits": null
+        },
+        {
+          "name": "Spellcasting",
+          "desc": "The archmage casts one of the following spells, using Intelligence as the spellcasting ability (spell save DC 17):\n\n- **At Will:** Detect Magic, Detect Thoughts, Disguise Self, Invisibility, Light, Mage Armor, Mage Hand, Prestidigitation\n- **2/Day Each:** Fly, Lightning Bolt\n- **1/Day Each:** Cone of Cold, Mind Blank, Scrying, Teleport",
+          "attacks": [],
+          "action_type": "ACTION",
+          "order_in_statblock": 2,
+          "legendary_action_cost": 1,
+          "limited_to_form": null,
+          "usage_limits": null
+        },
+        {
+          "name": "Misty Step",
+          "desc": "The mage casts Misty Step, using the same spellcasting ability as Spellcasting.",
+          "attacks": [],
+          "action_type": "BONUS_ACTION",
+          "order_in_statblock": 0,
+          "legendary_action_cost": null,
+          "limited_to_form": null,
+          "usage_limits": { "type": "PER_DAY", "param": 3 }
+        },
+        {
+          "name": "Protective Magic",
+          "desc": "The archmage casts Counterspell or Shield in response to the spell's trigger, using the same spellcasting ability as Spellcasting.",
+          "attacks": [],
+          "action_type": "REACTION",
+          "order_in_statblock": 0,
+          "legendary_action_cost": null,
+          "limited_to_form": null,
+          "usage_limits": { "type": "PER_DAY", "param": 3 }
+        }
+      ],
+      "traits": [
+        {
+          "name": "Magic Resistance",
+          "desc": "The archmage has Advantage on saving throws against spells and other magical effects."
+        }
+      ],
+      "creaturesets": [],
+      "environments": [],
+      "illustration": null,
+      "crossreferences": { "to": [] }
+    }
+  ]
+}

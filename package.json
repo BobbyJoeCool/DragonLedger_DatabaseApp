@@ -1,7 +1,7 @@
 {
   "name": "dragonledger-databaseapp",
   "private": true,
-  "version": "0.1.1",
+  "version": "0.2.0",
   "workspaces": [
     "client",
     "server",
@@ -18,6 +18,7 @@
     "electron:package": "npm run build && electron-builder --config electron-builder.yml",
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test --workspace=server --if-present",
+    "test:e2e": "playwright test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "ping:db": "tsx test/ping-db.ts",
@@ -31,6 +32,7 @@
     "seed": "tsx prisma/seed.ts"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@prisma/client": "^6.19.3",
     "concurrently": "^10.0.3",
     "eslint-config-prettier": "^10.1.8",

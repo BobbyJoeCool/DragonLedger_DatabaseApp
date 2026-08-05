@@ -1,0 +1,45 @@
+{
+  "count": 1,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "key": "srd-2024_soldier",
+      "benefits": [
+        {
+          "name": "Ability Scores",
+          "desc": "Strength, Dexterity, Constitution",
+          "type": "ability_score"
+        },
+        {
+          "name": "Equipment",
+          "desc": "*Choose A or B:* (A) Spear, Shortbow, 20 Arrows, Gaming Set (same as above), Healer's Kit, Quiver, Traveler's Clothes, 14 GP; or (B) 50 GP",
+          "type": "equipment"
+        },
+        { "name": "Feat", "desc": "Savage Attacker", "type": "feat" },
+        {
+          "name": "Skill Proficiencies",
+          "desc": "Athletics and Intimidation",
+          "type": "skill_proficiency"
+        },
+        {
+          "name": "Tool Proficiency",
+          "desc": "Choose one kind of Gaming Set",
+          "type": "tool_proficiency"
+        }
+      ],
+      "document": {
+        "name": "System Reference Document 5.2",
+        "key": "srd-2024",
+        "type": "SOURCE",
+        "display_name": "5e 2024 Rules",
+        "publisher": { "name": "Wizards of the Coast", "key": "wizards-of-the-coast" },
+        "gamesystem": { "name": "5th Edition 2024", "key": "5e-2024" },
+        "permalink": "https://dnd.wizards.com/resources/systems-reference-document"
+      },
+      "name": "Soldier",
+      "desc": "",
+      "crossreferences": { "to": [] }
+    }
+  ]
+}

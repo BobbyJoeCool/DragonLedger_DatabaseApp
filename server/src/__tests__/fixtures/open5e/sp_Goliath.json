@@ -1,0 +1,46 @@
+{
+  "count": 1,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "key": "srd-2024_goliath",
+      "is_subspecies": false,
+      "document": {
+        "name": "System Reference Document 5.2",
+        "key": "srd-2024",
+        "type": "SOURCE",
+        "display_name": "5e 2024 Rules",
+        "publisher": { "name": "Wizards of the Coast", "key": "wizards-of-the-coast" },
+        "gamesystem": { "name": "5th Edition 2024", "key": "5e-2024" },
+        "permalink": "https://dnd.wizards.com/resources/systems-reference-document"
+      },
+      "traits": [
+        { "name": "Size", "desc": "Medium (about 7–8 feet tall)", "type": "SIZE", "order": 1 },
+        { "name": "Speed", "desc": "35 feet", "type": "SPEED", "order": 2 },
+        {
+          "name": "Giant Ancestry",
+          "desc": "You are descended from Giants. Choose one of the following benefits—a supernatural boon from your ancestry; you can use the chosen benefit a number of times equal to your Proficiency Bonus, and you regain all expended uses when you finish a Long Rest:\n\n- **Cloud's Jaunt (Cloud Giant)**. As a Bonus Action, you magically teleport up to 30 feet to an unoccupied space you can see.\n- **Fire's Burn (Fire Giant)**. When you hit a target with an attack roll and deal damage to it, you can also deal 1d10 Fire damage to that target.\n- **Frost's Chill (Frost Giant)**. When you hit a target with an attack roll and deal damage to it, you can also deal 1d6 Cold damage to that target and reduce its Speed by 10 feet until the start of your next turn.\n- **Hill's Tumble (Hill Giant)**. When you hit a Large or smaller creature with an attack roll and deal damage to it, you can give that target the Prone condition.\n- **Stone's Endurance (Stone Giant)**. When you take damage, you can take a Reaction to roll 1d12. Add your Constitution modifier to the number rolled and reduce the damage by that total.\n- **Storm's Thunder (Storm Giant)**. When you take damage from a creature within 60 feet of you, you can take a Reaction to deal 1d8 Thunder damage to that creature.",
+          "type": null,
+          "order": 3
+        },
+        {
+          "name": "Large Form",
+          "desc": "Starting at character level 5, you can change your size to Large as a Bonus Action if you're in a big enough space. This transformation lasts for 10 minutes or until you end it (no action required). For that duration, you have Advantage on Strength checks, and your Speed increases by 10 feet. Once you use this trait, you can't use it again until you finish a Long Rest.",
+          "type": null,
+          "order": 4
+        },
+        {
+          "name": "Powerful Build",
+          "desc": "You have Advantage on any ability check you make to end the Grappled condition. You also count as one size larger when determining your carrying capacity.",
+          "type": null,
+          "order": 5
+        }
+      ],
+      "name": "Goliath",
+      "desc": "",
+      "subspecies_of": null,
+      "crossreferences": { "to": [] }
+    }
+  ]
+}

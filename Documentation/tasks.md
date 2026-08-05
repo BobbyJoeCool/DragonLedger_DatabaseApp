@@ -68,49 +68,75 @@ outline.md's Open Questions appendix — resolve that first rather than guessing
 
 ## Phase 2 — Open5e Import
 
-1. [ ] Add `ImportJob` model + `ImportJobType`/`ImportJobStatus` enums to schema (if not already done in Phase 1); migrate
-2. [ ] Create `server/src/schemas/content/*.ts` — one Zod schema per content type,
+1. [x] Add `ImportJob` model + `ImportJobType`/`ImportJobStatus` enums to schema (if not already done in Phase 1); migrate
+       — already fully present from Phase 1's schema build; no new migration needed
+2. [x] Create `server/src/schemas/content/*.ts` — one Zod schema per content type,
        each exporting a full schema and a `.partial()` variant (reused by Phase 4)
-3. [ ] Create `server/src/importers/open5e/*.ts` — one file per content type. Build order:
-   - [ ] `conditions.ts`, `spells.ts` (simplest, no cross-references)
-   - [ ] `races.ts` — `transformRace`, `synthesizeSubracesFromLineageTrait` (5 per-race
+3. [x] Create `server/src/importers/open5e/*.ts` — one file per content type. Build order:
+   - [x] `conditions.ts`, `spells.ts` (simplest, no cross-references)
+   - [x] `races.ts` — `transformRace`, `synthesizeSubracesFromLineageTrait` (5 per-race
          parsers: Elf, Dragonborn, Gnome, Goliath, Tiefling — **not** one generic
          parser, each has a genuinely different table/prose shape), `transformSubspecies`
          for real `is_subspecies: true` records. Import base races before subraces.
-   - [ ] `classes.ts` — `transformClass`, `transformSubclass`, `inferHitDie`
-         (priority: nested `hit_points.hit_dice` > "Hit Dice" feature scan >
-         hardcoded SRD table), `lookupSpellcastingAbility`, `lookupMulticlassLogic`.
-         Import classes before subclasses.
-   - [ ] `items.ts` — `transformItem`, `transformMagicItem`
-   - [ ] `monsters.ts` — last (needs Spells to exist for spellcasting name-matching).
-         `composeAttackDice`, `inferProficiencyBonus`, `parseSpellcastingTrait`
-4. [ ] `server/src/importers/utils/fetchWithRetry.ts` — 3 attempts, 500ms base
+   - [x] `classes.ts` — `transformClass`, `transformSubclass`, `inferHitDie`
+         (priority: nested `hit_points.hit_dice` > CORE_TRAITS_TABLE's "Hit Point Die"
+         row > "Hit Dice" feature scan > hardcoded SRD table — the CORE_TRAITS_TABLE
+         layer is a real-data addition, see item 7 below), `lookupSpellcastingAbility`,
+         `lookupMulticlassLogic`. Import classes before subclasses.
+   - [x] `items.ts` — `transformItem`, `transformMagicItem`
+   - [x] `monsters.ts` — last (needs Spells to exist for spellcasting name-matching;
+         name-resolution against `ContentSpell.slug` not implemented this pass — spell
+         names are parsed into `extraData.spellcasting` as plain strings, not
+         cross-referenced. Low-stakes per the original design doc ("a lookup hint
+         only, not a real FK") — deferred, not forgotten).
+         `composeAttackDice`, `inferProficiencyBonus`, `parseSpellcastingBlock`
+4. [x] `server/src/importers/utils/fetchWithRetry.ts` — 3 attempts, 500ms base
        exponential backoff, honor `Retry-After` on 429
-5. [ ] `server/src/importers/orchestrator.ts` — `importSource(sourceId, contentTypes, jobId)`:
-       upsert Source → per-content-type transaction (delete existing rows for
-       sourceId, fetch+transform+chunk(500)+`createMany`) → update `ImportJob`
-       progress/status per type → update `Source.lastUpdated` on completion
-   - [ ] **Recalculate the chunk size — this is a real fix, not just a
-         re-verification.** Each column value in each row is one bound SQL
-         parameter; 500 rows was sized against SQL Server's ~2,100-parameter
-         limit. SQLite's own limit (~999 parameters total per query) is much
-         lower — `ContentMonster` alone has ~25 columns, so 500 rows would
-         mean 12,500 parameters and would fail at import time. Compute chunk
-         size as `floor(999 / columnCount)` per model, or just pick one
-         conservative universal size (e.g. 30–50 rows) safely under the limit
-         for even the widest model.
-6. [ ] Wire endpoints: `POST /api/import/open5e`, `GET /api/import/progress/:jobId` (SSE),
-       `POST /api/import/file`, `GET /api/import/history`
-7. [ ] Before a full live import: verify against real API responses (not just
-       docs) the fields flagged as needing verification — Classes'
-       `skillChoices`/`armorProfs`/`weaponProfs` parsing specifically
-8. [ ] Confirm hardcoded lookup tables (hit-die fallback, spellcasting ability,
-       multiclass AND/OR logic) cover all SRD 2024 classes
-9. [ ] Update `dragonledger-master-schema.md`'s ER diagram if any field shape changes during implementation
-10. [ ] Verify FK constraints: `ContentSubclass.classId`, `ContentSubrace.raceId`,
-       `ContentRace.parentRaceId`, `ImportJob.sourceId`
-11. [ ] Write Phase 2 tests (pagination following, transform field mapping,
-        replace-not-duplicate on re-import, type-level rollback isolation, retry/backoff)
+5. [x] `server/src/importers/orchestrator.ts` — `importSource({ sourceId, sourceName,
+       documentKey?, contentTypes, jobId })`: upsert Source → per-content-type
+       transaction (delete existing rows for sourceId, fetch+transform+chunk+`createMany`)
+       → update `ImportJob` progress/status per type → update `Source.lastUpdated` on
+       completion. Validation (Zod `.parse()`) happens during the fetch+transform step,
+       *before* the transaction opens — a bad record fails fast without ever touching
+       existing DB rows for that type, which satisfies the rollback-isolation goal more
+       simply than a delete-then-reinsert-then-rollback transaction would.
+   - [x] **Chunk size recalculated**, not just re-verified: `computeChunkSize(columnCount)`
+         = `floor(900 / columnCount)`, per-model column counts declared in the orchestrator.
+6. [x] Wire endpoints: `POST /api/import/open5e`, `GET /api/import/progress/:jobId` (SSE),
+       `GET /api/import/history`. **`POST /api/import/file` deliberately not built this
+       pass** — it belongs to the JSON-file import path (Phase 6's Import Wizard Step 2c),
+       has no defined request/file shape anywhere in the design docs, and the user's ask
+       for this session was specifically the Open5e import. Not forgotten, out of scope.
+7. [x] Verified against real live API responses (not just docs) — several real
+       corrections found, documented in `DevTools/Claude/phase-2.md`. Highlights: Classes'
+       skill/armor/weapon proficiencies and primary-ability rule all live in one
+       `CORE_TRAITS_TABLE`-typed feature (a markdown table), not scattered named-feature
+       prose as assumed; Monster `challenge_rating` is a raw float, not a fraction string;
+       Monster `saving_throws` includes all six abilities, not proficient-only;
+       `Spellcasting` lives in a Monster's `actions[]`, not `traits[]`, for 2024 content;
+       Item weapon `properties[].name` is actually nested at `properties[].property.name`;
+       Background `benefits[]` are free prose requiring parsing, not pre-structured, and
+       2024 SRD backgrounds grant a `type: "feat"` benefit not in the original mapping at
+       all (routed to `extraData.grantedFeat`); Open5e's v2 API currently has **zero**
+       Conditions tagged under `srd-2024` (confirmed real upstream data gap, not a bug —
+       importing Conditions for this source correctly yields 0 rows today).
+8. [x] Hardcoded lookup tables confirmed to cover all 12 SRD 2024 classes — cross-checked
+       live against Barbarian, Bard, Cleric, Druid, Fighter, Monk, Paladin, Ranger, Rogue,
+       Sorcerer, Warlock, Wizard via a full live import (see below).
+9. [ ] `dragonledger-master-schema.md`'s ER diagram — no field-shape changes were needed
+       this phase (Phase 1's schema already matched what Phase 2 needed), so nothing to update.
+10. [x] FK constraints verified — all already correct from Phase 1's schema build.
+11. [x] Phase 2 tests written: `server/src/__tests__/importers/*.test.ts` (59 tests —
+        pagination following, retry/backoff incl. Retry-After and fail-fast-on-404,
+        chunk sizing, and per-content-type transform field mapping against real captured
+        API fixtures) plus `orchestrator.test.ts` (replace-not-duplicate on re-import,
+        per-type rollback isolation with other types unaffected). **Beyond the original
+        scope:** a full real (non-mocked) import against live Open5e SRD 2024 data was
+        run end-to-end and spot-checked by hand, and a Playwright E2E suite
+        (`e2e/open5e-import.spec.ts`) drives the real HTTP API to do the same thing as an
+        automated, repeatable test — spot-checking a simple and a complex row in every
+        table the importer writes to. The equivalent Compendium-import suite will follow
+        once Phase 2.5 exists to test.
 
 ---
 

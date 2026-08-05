@@ -1,0 +1,45 @@
+{
+  "count": 1,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "key": "srd-2024_acolyte",
+      "benefits": [
+        {
+          "name": "Ability Scores",
+          "desc": "Intelligence, Wisdom, Charisma",
+          "type": "ability_score"
+        },
+        {
+          "name": "Equipment",
+          "desc": "*Choose A or B:* (A) Calligrapher's Supplies, Book (prayers), Holy Symbol, Parchment (10 sheets), Robe, 8 GP; or (B) 50 GP",
+          "type": "equipment"
+        },
+        { "name": "Feat", "desc": "Magic Initiate (Cleric)", "type": "feat" },
+        {
+          "name": "Skill Proficiencies",
+          "desc": "Insight and Religion",
+          "type": "skill_proficiency"
+        },
+        {
+          "name": "Tool Proficiency",
+          "desc": "Calligrapher's Supplies",
+          "type": "tool_proficiency"
+        }
+      ],
+      "document": {
+        "name": "System Reference Document 5.2",
+        "key": "srd-2024",
+        "type": "SOURCE",
+        "display_name": "5e 2024 Rules",
+        "publisher": { "name": "Wizards of the Coast", "key": "wizards-of-the-coast" },
+        "gamesystem": { "name": "5th Edition 2024", "key": "5e-2024" },
+        "permalink": "https://dnd.wizards.com/resources/systems-reference-document"
+      },
+      "name": "Acolyte",
+      "desc": "",
+      "crossreferences": { "to": [] }
+    }
+  ]
+}

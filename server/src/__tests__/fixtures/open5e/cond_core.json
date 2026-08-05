@@ -1,0 +1,81 @@
+{
+  "count": 15,
+  "next": "https://api.open5e.com/v2/conditions/?document__key__in=core&limit=2&page=2",
+  "previous": null,
+  "results": [
+    {
+      "key": "blinded",
+      "document": {
+        "name": "5e Core Concepts",
+        "key": "core",
+        "type": "MISC",
+        "display_name": "5e Core",
+        "publisher": { "name": "Open5e", "key": "open5e" },
+        "gamesystem": { "name": "5th Edition 2014", "key": "5e-2014" },
+        "permalink": "https://dnd.wizards.com/resources/systems-reference-document"
+      },
+      "icon": {
+        "name": "Blinded",
+        "key": "elderberry_blinded",
+        "file_url": "/static/img/object_icons/elderberry-inn-icons/conditions/blinded.svg",
+        "alt_text": "An icon representing the blinded condition in an RPG. A simple, abstract black-and-white icon of an eye with a line crossed through it.",
+        "attribution": "Designed with love by Anaislalovi (@anaislalovi) for Elderberry Inn."
+      },
+      "descriptions": [
+        {
+          "desc": "* A blinded creature can’t see and it automatically fails ability checks that require sight.\n\n* Attack rolls against a blinded creature are made with advantage, and the creature’s attack rolls are made with disadvantage.",
+          "document": "a5e-ag",
+          "gamesystem": "a5e"
+        },
+        {
+          "desc": "* A blinded creature can't see and automatically fails any ability check that requires sight.\r\n* Attack rolls against the creature have advantage, and the creature’s attack rolls have disadvantage.",
+          "document": "srd-2014",
+          "gamesystem": "5e-2014"
+        },
+        {
+          "desc": "While you have the Blinded condition, you experience the following effects.\n * Can’t See. You can’t see and automatically fail any ability check that requires sight.\n * Attacks Affected. Attack rolls against you have Advantage, and your attack rolls have Disadvantage.",
+          "document": "srd-2024",
+          "gamesystem": "5e-2024"
+        }
+      ],
+      "name": "Blinded"
+    },
+    {
+      "key": "charmed",
+      "document": {
+        "name": "5e Core Concepts",
+        "key": "core",
+        "type": "MISC",
+        "display_name": "5e Core",
+        "publisher": { "name": "Open5e", "key": "open5e" },
+        "gamesystem": { "name": "5th Edition 2014", "key": "5e-2014" },
+        "permalink": "https://dnd.wizards.com/resources/systems-reference-document"
+      },
+      "icon": {
+        "name": "Charmed",
+        "key": "elderberry_charmed",
+        "file_url": "/static/img/object_icons/elderberry-inn-icons/conditions/charmed.svg",
+        "alt_text": "An icon representing the charmed condition in an RPG. A simple black-and-white silhouette of a humanoid facing the viewer. There is a heart where their face should be.",
+        "attribution": "Designed with love by Anaislalovi (@anaislalovi) for Elderberry Inn."
+      },
+      "descriptions": [
+        {
+          "desc": "* A charmed creature can’t take any hostile action against the charmer.\n\n* Ability checks the charmer makes to socially interact with the charmed creature have advantage.",
+          "document": "a5e-ag",
+          "gamesystem": "a5e"
+        },
+        {
+          "desc": "* A charmed creature can’t attack the charmer or target the charmer with harmful abilities or magical effects.\r\n* The charmer has advantage on any ability check to interact socially with the creature.",
+          "document": "srd-2014",
+          "gamesystem": "5e-2014"
+        },
+        {
+          "desc": "While you have the Charmed condition, you experience the following effects. \n* Can’t Harm the Charmer. You can’t attack the charmer or target the charmer with damaging abilities or magical effects. \n* Social Advantage. The charmer has Advantage on any ability check to interact with you socially.",
+          "document": "srd-2024",
+          "gamesystem": "5e-2024"
+        }
+      ],
+      "name": "Charmed"
+    }
+  ]
+}
