@@ -56,4 +56,35 @@ describe('transformCompendiumClass', () => {
     expect(classResult.row.name).toBe('Wizard')
     expect(subclasses.map((s) => s.row.name)).toEqual(expect.arrayContaining(['Abjurer', 'Evoker']))
   })
+
+  it('infers casterType FULL for a real long-rest full caster (Phase 2.6 — Compendium has no direct field for this)', () => {
+    const raw = compendiumFixture<CompendiumClass>('cleric')
+    expect(raw.spellAbility).toBe('Wisdom')
+    expect(raw.slotsReset).toBe('L') // long rest alone can't distinguish FULL from HALF
+    const { classResult } = transformCompendiumClass(raw)
+    const extra = JSON.parse(classResult.row.extraData!)
+    expect(extra.casterType).toBe('FULL')
+    expect(extra.features).toBeUndefined() // moved to ContentClassFeature, Phase 2.6
+  })
+
+  it('populates classFeatures as one row per level, matching the native <autolevel level="N"> granularity', () => {
+    const raw = compendiumFixture<CompendiumClass>('cleric')
+    const { classFeatures } = transformCompendiumClass(raw)
+
+    expect(classFeatures.length).toBeGreaterThan(0)
+    for (const f of classFeatures) {
+      expect(typeof f.level).toBe('number')
+      expect(f.name).toBeTruthy()
+      expect(f.type).toBeNull() // Compendium has no equivalent of Open5e's feature-type tag
+    }
+  })
+
+  it("populates each subclass's own features array, separate from the base class's", () => {
+    const raw = compendiumFixture<CompendiumClass>('cleric')
+    const { subclasses } = transformCompendiumClass(raw)
+
+    const lifeDomain = subclasses.find((s) => s.row.name === 'Life Domain')!
+    expect(lifeDomain.features.length).toBeGreaterThan(0)
+    expect(lifeDomain.features.every((f) => typeof f.level === 'number')).toBe(true)
+  })
 })

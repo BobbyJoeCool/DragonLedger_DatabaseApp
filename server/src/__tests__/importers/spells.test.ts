@@ -23,4 +23,21 @@ describe('transformSpell', () => {
     expect(extra.shapeType).toBe('sphere')
     expect(extra.shapeSize).toBe(20)
   })
+
+  it('writes extraData.scaling in the unified shape, trigger decided from spell.level (Phase 2.6)', () => {
+    const raw = loadFixtureResult<Open5eSpell>('fireball2.json')
+    expect(raw.level).toBe(3) // non-cantrip → slot_level trigger, not character_level
+    const row = transformSpell(raw, 'test-source')
+
+    const extra = JSON.parse(row.extraData!)
+    expect(extra.castingOptions).toBeUndefined() // renamed away, not left alongside
+    expect(extra.scaling).toEqual([
+      { trigger: 'slot_level', triggerValue: 4, dice: '9d6', description: null },
+      { trigger: 'slot_level', triggerValue: 5, dice: '10d6', description: null },
+      { trigger: 'slot_level', triggerValue: 6, dice: '11d6', description: null },
+      { trigger: 'slot_level', triggerValue: 7, dice: '12d6', description: null },
+      { trigger: 'slot_level', triggerValue: 8, dice: '13d6', description: null },
+      { trigger: 'slot_level', triggerValue: 9, dice: '14d6', description: null },
+    ])
+  })
 })

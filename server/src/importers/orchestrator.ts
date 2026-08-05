@@ -60,10 +60,11 @@ const COLUMN_COUNTS: Record<Open5eContentType, number> = {
   CLASS: 13,
   BACKGROUND: 9,
   ITEM: 14,
-  MONSTER: 25,
+  MONSTER: 26, // +1 for experiencePoints (Phase 2.6)
 }
 const SUBRACE_COLUMN_COUNT = 10
 const SUBCLASS_COLUMN_COUNT = 7
+const CLASS_FEATURE_COLUMN_COUNT = 7 // id, classId, subclassId, level, name, description, type — Phase 2.6
 
 function chunk<T>(items: T[], size: number): T[][] {
   const out: T[][] = []
@@ -171,38 +172,77 @@ async function importClasses(sourceId: string, documentKey: string): Promise<Imp
   const baseClasses = raw.filter((c) => !c.subclass_of)
   const subclassRecords = raw.filter((c) => c.subclass_of)
 
-  const classRows = baseClasses.map((c) => transformClass(c, sourceId))
+  const classResults = baseClasses.map((c) => transformClass(c, sourceId))
   const classChunkSize = computeChunkSize(COLUMN_COUNTS.CLASS)
   const subclassChunkSize = computeChunkSize(SUBCLASS_COLUMN_COUNT)
+  const featureChunkSize = computeChunkSize(CLASS_FEATURE_COLUMN_COUNT)
 
   let total = 0
 
   await prisma.$transaction(async (tx) => {
+    // ContentClassFeature has no direct sourceId — cascades transitively
+    // when its parent ContentClass/ContentSubclass row is deleted below
+    // (onDelete: Cascade on both FKs, Prisma's own connections enforce
+    // SQLite foreign_keys, unlike the bare sqlite3 CLI).
     await tx.contentSubclass.deleteMany({ where: { sourceId } })
     await tx.contentClass.deleteMany({ where: { sourceId } })
 
-    for (const batch of chunk(classRows, classChunkSize)) {
+    for (const batch of chunk(
+      classResults.map((r) => r.row),
+      classChunkSize,
+    )) {
       await tx.contentClass.createMany({ data: batch })
     }
-    total += classRows.length
+    total += classResults.length
 
-    const inserted = await tx.contentClass.findMany({
+    const insertedClasses = await tx.contentClass.findMany({
       where: { sourceId },
       select: { id: true, slug: true },
     })
-    const idBySlug = new Map(inserted.map((c) => [c.slug, c.id]))
+    const classIdBySlug = new Map(insertedClasses.map((c) => [c.slug, c.id]))
 
-    const subclassRows = subclassRecords.map((sub) => {
+    const classFeatureRows: Prisma.ContentClassFeatureCreateManyInput[] = []
+    for (const result of classResults) {
+      const classId = classIdBySlug.get(result.row.slug)
+      if (!classId) continue
+      for (const f of result.features) {
+        classFeatureRows.push({ classId, subclassId: null, ...f })
+      }
+    }
+
+    const subclassResults = subclassRecords.map((sub) => {
       const classId = sub.subclass_of
-        ? (idBySlug.get(slugFromKey(sub.subclass_of.key, sub.document.key)) ?? null)
+        ? (classIdBySlug.get(slugFromKey(sub.subclass_of.key, sub.document.key)) ?? null)
         : null
       return transformSubclass(sub, classId, sourceId)
     })
 
-    for (const batch of chunk(subclassRows, subclassChunkSize)) {
+    for (const batch of chunk(
+      subclassResults.map((r) => r.row),
+      subclassChunkSize,
+    )) {
       await tx.contentSubclass.createMany({ data: batch })
     }
-    total += subclassRows.length
+    total += subclassResults.length
+
+    const insertedSubclasses = await tx.contentSubclass.findMany({
+      where: { sourceId },
+      select: { id: true, slug: true },
+    })
+    const subclassIdBySlug = new Map(insertedSubclasses.map((s) => [s.slug, s.id]))
+
+    for (const result of subclassResults) {
+      const subclassId = subclassIdBySlug.get(result.row.slug)
+      if (!subclassId) continue
+      for (const f of result.features) {
+        classFeatureRows.push({ classId: null, subclassId, ...f })
+      }
+    }
+
+    for (const batch of chunk(classFeatureRows, featureChunkSize)) {
+      await tx.contentClassFeature.createMany({ data: batch })
+    }
+    total += classFeatureRows.length
   })
 
   return { count: total }

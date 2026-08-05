@@ -76,4 +76,28 @@ describe('transformMonster (Archmage — complex, spellcasting)', () => {
     const extra = JSON.parse(row.extraData!)
     expect(extra.proficiencyBonus).toBe(inferProficiencyBonus(12))
   })
+
+  it('writes experiencePoints to its own column (Phase 2.6), not extraData', () => {
+    const raw = loadFixtureResult<Open5eCreature>('archmage.json')
+    const row = transformMonster(raw, 'test-source')
+    expect(row.experiencePoints).toBe(8400)
+    const extra = JSON.parse(row.extraData!)
+    expect(extra.experiencePoints).toBeUndefined()
+  })
+
+  it('parses the real damage_immunities_display/condition_immunities_display prose into the unified {types,nonmagical,bypassedBy} shape (Phase 2.6)', () => {
+    const raw = loadFixtureResult<Open5eCreature>('archmage.json')
+    expect(raw.resistances_and_immunities.damage_immunities_display).toBe('psychic')
+    const row = transformMonster(raw, 'test-source')
+    expect(JSON.parse(row.damageImmunities!)).toEqual([
+      { types: ['psychic'], nonmagical: false, bypassedBy: null },
+    ])
+    expect(JSON.parse(row.conditionImmunities!)).toEqual([
+      { types: ['charmed'], nonmagical: false, bypassedBy: null },
+    ])
+    // Archmage has immunities but no resistances — damage_resistances_display
+    // is "" (empty string, not null) on the real fixture, same shape
+    // verified live against the API for creatures with none at all.
+    expect(row.damageResistances).toBeNull()
+  })
 })

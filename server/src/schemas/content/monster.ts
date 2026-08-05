@@ -8,20 +8,15 @@ const actionSchema = z.object({
   damage: z.string().nullable().optional(),
 })
 
-// Two valid shapes coexist in this column by design, not by accident: a
-// plain type string (Open5e's already-split array) or the composite parser
-// entry (`{types, nonmagical, bypassedBy}`) the Compendium importer relies
-// on for its free-text resistance fields — see importers/shared/resistance.ts.
-// Open5e's monster transform hasn't been retrofitted onto the composite
-// parser yet (tracked as a known follow-up), so both shapes are real and
-// intentional today, not a schema bug.
-const compositeResistanceEntrySchema = z.object({
-  type: z.string().optional(),
-  types: z.array(z.string()).optional(),
-  nonmagical: z.boolean().optional(),
-  bypassedBy: z.string().nullable().optional(),
+// Phase 2.6: unified shape, both sources write this — see
+// importers/shared/resistance.ts and schema-expansion-design-handoff.md §1.1.
+// All three fields always present (never optional, never a bare string) so
+// a downstream consumer never has to branch on which source wrote the row.
+const resistanceEntrySchema = z.object({
+  types: z.array(z.string()).min(1),
+  nonmagical: z.boolean(),
+  bypassedBy: z.string().nullable(),
 })
-const resistanceEntrySchema = z.union([z.string(), compositeResistanceEntrySchema])
 
 export const MonsterSchema = z.object({
   slug: z.string().min(1),
@@ -44,6 +39,7 @@ export const MonsterSchema = z.object({
   senses: z.string().nullable().optional(),
   languages: z.string().nullable().optional(),
   challengeRating: z.string(),
+  experiencePoints: z.number().int(),
   actions: z.array(actionSchema),
   legendaryActions: z.array(actionSchema).nullable().optional(),
   description: z.string().nullable().optional(),

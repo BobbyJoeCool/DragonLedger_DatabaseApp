@@ -1,5 +1,10 @@
 import type { Prisma } from '@prisma/client'
 import { MonsterSchema } from '../../schemas/content/monster.js'
+import {
+  parseCompositeResistanceList,
+  type CompositeResistanceEntry,
+} from '../shared/resistance.js'
+import { xpFromChallengeRating } from '../shared/experiencePoints.js'
 import { toJsonString } from '../utils/json.js'
 import { slugFromKey } from './slug.js'
 import type {
@@ -19,6 +24,17 @@ export function formatChallengeRating(cr: number): string {
   return String(cr)
 }
 
+// Inverse of formatChallengeRating — Compendium's <cr> is already a
+// fraction-formatted string/number (unlike Open5e's raw float), and
+// inferProficiencyBonus() below needs a real number to threshold against.
+// Exported for reuse by the Compendium monster transform (Phase 2.6).
+export function parseChallengeRatingToNumber(cr: string): number {
+  if (cr === '1/8') return 0.125
+  if (cr === '1/4') return 0.25
+  if (cr === '1/2') return 0.5
+  return Number(cr) || 0
+}
+
 // CR-to-proficiency-bonus lookup — proficiency_bonus was null on every live
 // sample checked, so this fallback is the effective primary source, not a
 // rare edge case.
@@ -33,8 +49,22 @@ export function inferProficiencyBonus(cr: number): number {
   return 9
 }
 
-function extractKeys(list: Open5eKeyName[]): string[] | null {
-  return list.length > 0 ? list.map((k) => k.key) : null
+// Phase 2.6: parses the API's `_display` prose through the same composite
+// parser Compendium uses, rather than the flat key array (which silently
+// discards qualifiers like "nonmagical"/"unless silvered" — verified live
+// that no real SRD-2024 monster's `_display` text actually uses those
+// templates today, so this mainly future-proofs the shape rather than
+// changing today's values, but it's the source both sources should read
+// from per the unified-column decision). Falls back to reconstructing a
+// comma-joined string from the flat array on the off chance `_display` is
+// ever empty while the array isn't — never verified live, defensive only.
+function parseResistanceField(
+  display: string,
+  fallbackList: Open5eKeyName[],
+): CompositeResistanceEntry[] | null {
+  const text = display || fallbackList.map((k) => k.key).join(', ')
+  const parsed = parseCompositeResistanceList(text)
+  return parsed.length > 0 ? parsed : null
 }
 
 function nonEmptyRecord(
@@ -180,9 +210,11 @@ export function transformMonster(
   if (raw.armor_detail) extraData.armorClassDetail = raw.armor_detail
   if (lairActions.length > 0) extraData.lairActions = lairActions
   if (spellcasting) extraData.spellcasting = spellcasting
-  if (raw.experience_points !== null) extraData.experiencePoints = raw.experience_points
   if (raw.category) extraData.category = raw.category
   if (raw.subcategory) extraData.subcategory = raw.subcategory
+
+  const challengeRating = formatChallengeRating(raw.challenge_rating)
+  const ri = raw.resistances_and_immunities
 
   const logical = MonsterSchema.parse({
     slug: slugFromKey(raw.key, documentKey),
@@ -198,13 +230,23 @@ export function transformMonster(
     abilityScores: raw.ability_scores,
     savingThrows: nonEmptyRecord(raw.saving_throws),
     skills: nonEmptyRecord(raw.skill_bonuses),
-    damageResistances: extractKeys(raw.resistances_and_immunities.damage_resistances),
-    damageImmunities: extractKeys(raw.resistances_and_immunities.damage_immunities),
-    damageVulnerabilities: extractKeys(raw.resistances_and_immunities.damage_vulnerabilities),
-    conditionImmunities: extractKeys(raw.resistances_and_immunities.condition_immunities),
+    damageResistances: parseResistanceField(ri.damage_resistances_display, ri.damage_resistances),
+    damageImmunities: parseResistanceField(ri.damage_immunities_display, ri.damage_immunities),
+    damageVulnerabilities: parseResistanceField(
+      ri.damage_vulnerabilities_display,
+      ri.damage_vulnerabilities,
+    ),
+    conditionImmunities: parseResistanceField(
+      ri.condition_immunities_display,
+      ri.condition_immunities,
+    ),
     senses: composeSenses(raw),
     languages: raw.languages?.as_string ?? null,
-    challengeRating: formatChallengeRating(raw.challenge_rating),
+    challengeRating,
+    // Passthrough of the API's real per-monster value — relocated out of
+    // extraData into its own column (Phase 2.6); CR-table fallback only for
+    // the null case, never observed live but the column is NOT NULL.
+    experiencePoints: raw.experience_points ?? xpFromChallengeRating(challengeRating),
     actions: mainActions,
     legendaryActions: legendaryActions.length > 0 ? legendaryActions : null,
     description: raw.description ?? null,
@@ -232,6 +274,7 @@ export function transformMonster(
     senses: logical.senses ?? null,
     languages: logical.languages ?? null,
     challengeRating: logical.challengeRating,
+    experiencePoints: logical.experiencePoints,
     actions: toJsonString(logical.actions) as string,
     legendaryActions: toJsonString(logical.legendaryActions),
     description: logical.description ?? null,

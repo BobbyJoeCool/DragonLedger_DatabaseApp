@@ -21,10 +21,11 @@ describe('transformCompendiumMonster', () => {
     expect(row.damageResistances).not.toBeNull()
     const resistances = JSON.parse(row.damageResistances!)
     expect(Array.isArray(resistances)).toBe(true)
-    // A real composite entry (multiple damage types, possibly a
-    // nonmagical/bypass qualifier) uses `types` (plural); only a genuinely
-    // single, unqualified damage type collapses to `type`.
-    expect(resistances[0].type || resistances[0].types).toBeTruthy()
+    // Phase 2.6 unified shape — always {types, nonmagical, bypassedBy},
+    // never a bare `type` string, regardless of source.
+    expect(Object.keys(resistances[0]).sort()).toEqual(['bypassedBy', 'nonmagical', 'types'])
+    expect(Array.isArray(resistances[0].types)).toBe(true)
+    expect(typeof resistances[0].nonmagical).toBe('boolean')
   })
 
   it('detects a bonus-action suffix in the action name and strips it into actionType, leaving recharge suffixes alone', () => {
@@ -36,5 +37,36 @@ describe('transformCompendiumMonster', () => {
       expect(nimble.actionType).toBe('bonus')
       expect(nimble.name).not.toContain('Bonus Action')
     }
+  })
+
+  it('computes experiencePoints from challengeRating (Compendium has no XP field at all)', () => {
+    const raw = compendiumFixture<CompendiumMonster>('goblinMonster')
+    expect(raw.cr).toBe('1/4')
+    const { row } = transformCompendiumMonster(raw)
+    expect(row.experiencePoints).toBe(50) // standard 5e CR 1/4 → 50 XP
+  })
+
+  // Real, previously-shipped bug (Phase 2.6 fix): 54.5% of real Compendium
+  // monsters have no "Proficiency Bonus" trait at all and used to default to
+  // 0 (never actually correct in 5e rules — minimum is +2) instead of
+  // falling back to the same CR-inference Open5e's transform already has.
+  it('falls back to CR-based proficiency-bonus inference when no "Proficiency Bonus" trait exists (Phase 2.6 fix)', () => {
+    const raw = compendiumFixture<CompendiumMonster>('goblinMonster')
+    const noProfTrait: CompendiumMonster = {
+      ...raw,
+      trait: (raw.trait ?? []).filter((t) => t.name !== 'Proficiency Bonus'),
+    }
+    const { row } = transformCompendiumMonster(noProfTrait)
+    const extra = JSON.parse(row.extraData!)
+    expect(extra.proficiencyBonus).toBe(2) // CR 1/4 → +2, never the old constant 0
+  })
+
+  it('uses the real "Proficiency Bonus" trait value when present, not the CR fallback', () => {
+    const raw = compendiumFixture<CompendiumMonster>('airElemental')
+    const profTrait = (raw.trait ?? []).find((t) => t.name === 'Proficiency Bonus')
+    expect(profTrait).toBeTruthy()
+    const { row } = transformCompendiumMonster(raw)
+    const extra = JSON.parse(row.extraData!)
+    expect(extra.proficiencyBonus).toBe(Number(profTrait!.text))
   })
 })

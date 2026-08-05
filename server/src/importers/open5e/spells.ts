@@ -1,8 +1,9 @@
 import type { Prisma } from '@prisma/client'
 import { SpellSchema } from '../../schemas/content/spell.js'
+import { scalingTriggerForSpellLevel, type SpellScalingEntry } from '../shared/spellScaling.js'
 import { toJsonString } from '../utils/json.js'
 import { slugFromKey } from './slug.js'
-import type { Open5eSpell } from './types.js'
+import type { Open5eCastingOption, Open5eSpell } from './types.js'
 
 function composeComponents(raw: Open5eSpell): string {
   const parts: string[] = []
@@ -16,16 +17,45 @@ function composeComponents(raw: Open5eSpell): string {
 // beyond the default is a no-op — only keep the array when a later entry
 // (an alternate slot/ritual mode with its own range/duration/damage) adds
 // something the default doesn't already say.
-function meaningfulCastingOptions(options: unknown[]): unknown[] | null {
+function meaningfulCastingOptions(options: Open5eCastingOption[]): Open5eCastingOption[] | null {
   if (options.length === 0) return null
   if (options.length === 1) {
-    const only = options[0] as Record<string, unknown>
+    const only = options[0] as unknown as Record<string, unknown>
     const hasRealData = Object.entries(only).some(
       ([key, value]) => key !== 'type' && value !== null,
     )
     if (!hasRealData) return null
   }
   return options
+}
+
+// Phase 2.6: unify into extraData.scaling, dropping the non-damage upcast
+// fields (duration/range/concentration/shape_size) — every sample checked
+// has these as null, so they're not carried forward unused (see
+// schema-expansion-design-handoff.md §1.2). `type`'s trailing `_N` is the
+// trigger value regardless of whether the prefix is `player_level_` or
+// `slot_level_` — the trigger *kind* itself comes from the spell's own
+// level, not this string.
+function toScalingEntries(
+  options: Open5eCastingOption[],
+  spellLevel: number,
+): SpellScalingEntry[] | null {
+  const meaningful = meaningfulCastingOptions(options)
+  if (!meaningful) return null
+
+  const trigger = scalingTriggerForSpellLevel(spellLevel)
+  const entries = meaningful
+    .filter((o) => o.damage_roll)
+    .map((o): SpellScalingEntry => {
+      const match = o.type.match(/_(\d+)$/)
+      return {
+        trigger,
+        triggerValue: match ? Number(match[1]) : null,
+        dice: o.damage_roll as string,
+        description: o.desc,
+      }
+    })
+  return entries.length > 0 ? entries : null
 }
 
 export function transformSpell(
@@ -35,8 +65,8 @@ export function transformSpell(
   const documentKey = raw.document.key
 
   const extraData: Record<string, unknown> = {}
-  const castingOptions = meaningfulCastingOptions(raw.casting_options)
-  if (castingOptions) extraData.castingOptions = castingOptions
+  const scaling = toScalingEntries(raw.casting_options, raw.level)
+  if (scaling) extraData.scaling = scaling
   if (raw.damage_roll) extraData.damageRoll = raw.damage_roll
   if (raw.damage_types.length > 0) extraData.damageTypes = raw.damage_types
   if (raw.saving_throw_ability) extraData.savingThrow = raw.saving_throw_ability

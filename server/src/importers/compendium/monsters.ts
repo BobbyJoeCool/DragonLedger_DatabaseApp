@@ -3,6 +3,8 @@ import { MonsterSchema } from '../../schemas/content/monster.js'
 import { slugify } from '../../utils/slugify.js'
 import { parseCompositeResistanceList } from '../shared/resistance.js'
 import { extractTelepathyRange } from '../shared/telepathy.js'
+import { xpFromChallengeRating } from '../shared/experiencePoints.js'
+import { inferProficiencyBonus, parseChallengeRatingToNumber } from '../open5e/monsters.js'
 import { toJsonString } from '../utils/json.js'
 import { extractCitation } from './citation.js'
 import { parseNameTags } from './nameTags.js'
@@ -200,10 +202,19 @@ export function transformCompendiumMonster(
     ? parseSpellcastingBlock(String(spellcastingTrait.text))
     : null
   const telepathyRange = extractTelepathyRange(raw.languages) ?? extractTelepathyRange(raw.senses)
+  const challengeRating = typeof raw.cr === 'string' ? raw.cr : String(raw.cr)
+
+  // Phase 2.6 fix: previously defaulted to 0 (never actually correct in 5e
+  // rules — minimum is +2) whenever no "Proficiency Bonus" trait existed on
+  // the record, which was true for 54.5% of real Compendium monsters. Now
+  // falls back to the same CR-inference Open5e's transform already uses.
+  const proficiencyBonus = proficiencyBonusTrait
+    ? Number(proficiencyBonusTrait.text) || 0
+    : inferProficiencyBonus(parseChallengeRatingToNumber(challengeRating))
 
   const extraData: Record<string, unknown> = {
     traits: otherTraits.map((t) => ({ name: t.name, description: String(t.text) })),
-    proficiencyBonus: proficiencyBonusTrait ? Number(proficiencyBonusTrait.text) || 0 : 0,
+    proficiencyBonus,
     legendaryResistances: legendaryResistanceTrait
       ? parseLegendaryResistances(legendaryResistanceTrait.name)
       : 0,
@@ -265,7 +276,10 @@ export function transformCompendiumMonster(
         : null,
     senses: senses || null,
     languages: raw.languages ?? null,
-    challengeRating: typeof raw.cr === 'string' ? raw.cr : String(raw.cr),
+    challengeRating,
+    // Compendium's XML has no XP field at all — computed from CR via the
+    // standard 5e table, not a passthrough (Phase 2.6).
+    experiencePoints: xpFromChallengeRating(challengeRating),
     actions: mainActions,
     legendaryActions: legendaryActions.length > 0 ? legendaryActions : null,
     description: citation.cleanedText || null,
@@ -294,6 +308,7 @@ export function transformCompendiumMonster(
       senses: logical.senses ?? null,
       languages: logical.languages ?? null,
       challengeRating: logical.challengeRating,
+      experiencePoints: logical.experiencePoints,
       actions: toJsonString(logical.actions) as string,
       legendaryActions: toJsonString(logical.legendaryActions),
       description: logical.description ?? null,

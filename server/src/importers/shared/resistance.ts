@@ -3,15 +3,23 @@
 // attacks that aren't silvered") gets recognized as one atomic entry rather
 // than split on commas (which garbles the qualifier) or left as one opaque
 // blob (which loses the fact that it's specifically three physical damage
-// types). For the Compendium this is the only form the data takes at all
+// types).
+//
+// Phase 2.6: normalized to one unified shape written by both sources —
+// `types`/`nonmagical`/`bypassedBy` are always present (never optional,
+// never a bare string), decided in the schema-expansion design session so a
+// downstream consumer (e.g. a character sheet computing whether a hit
+// should be halved) never has to branch on which source a row came from.
+// For Compendium this remains the only form the data takes at all
 // (`<resist>`/`<immune>`/`<vulnerable>`/`<conditionImmune>` are plain free
-// text); for Open5e it applies to the `_display` string, not the
+// text); for Open5e it's applied to the API's `_display` string fields
+// (falling back to a comma-joined reconstruction of the flat key array if
+// `_display` is ever empty while the flat array isn't), not the
 // already-split array, since the array silently discards the qualifier.
 export interface CompositeResistanceEntry {
-  type?: string
-  types?: string[]
-  nonmagical?: boolean
-  bypassedBy?: string | null
+  types: string[]
+  nonmagical: boolean
+  bypassedBy: string | null
 }
 
 const DAMAGE_TYPE_WORDS = new Set([
@@ -54,31 +62,32 @@ function parseOneClause(clause: string): CompositeResistanceEntry {
     .replace(/\bdamage\b/gi, '')
     .trim()
 
-  const candidates = splitList(wordsOnly)
-    .map((w) => w.toLowerCase())
-    .filter((w) => DAMAGE_TYPE_WORDS.has(w))
+  const allWords = splitList(wordsOnly).map((w) => w.toLowerCase())
+  const recognized = allWords.filter((w) => DAMAGE_TYPE_WORDS.has(w))
 
-  if (candidates.length > 1) {
-    return {
-      types: candidates,
-      nonmagical: nonmagical || undefined,
-      bypassedBy: bypassedBy ?? undefined,
-    }
+  // Recognized damage-type words found — use only those (drops incidental
+  // filler words like a stray unrecognized token mixed into the same
+  // clause). Covers both the qualified case (nonmagical/bypassedBy set) and
+  // the plain multi-type list case ("cold, fire, lightning").
+  if (recognized.length > 0) {
+    return { types: recognized, nonmagical, bypassedBy }
   }
-  if (candidates.length === 1 && !nonmagical && !bypassedBy) {
-    return { type: candidates[0] }
+
+  // No recognized damage-type words at all — this is either a condition
+  // name list (conditionImmunities reuses this same parser, and condition
+  // names like "poisoned"/"exhaustion" were never in DAMAGE_TYPE_WORDS) or
+  // genuinely unrecognized free text. Real, previously-shipped bug fixed
+  // here: a multi-condition clause like "charmed, exhaustion, frightened"
+  // used to collapse into one opaque string entry instead of three separate
+  // condition names — using the already-split, lowercased word list instead
+  // of the raw unsplit clause fixes that for both sources.
+  if (allWords.length > 0) {
+    return { types: allWords, nonmagical, bypassedBy }
   }
-  if (candidates.length === 1) {
-    return {
-      types: candidates,
-      nonmagical: nonmagical || undefined,
-      bypassedBy: bypassedBy ?? undefined,
-    }
-  }
-  // Couldn't find recognized damage-type words at all (e.g. a bare
-  // condition name, or free text the template doesn't cover) — best-effort
-  // fallback that still preserves the clause rather than dropping it.
-  return { type: trimmed.toLowerCase() }
+
+  // Last-resort fallback — should be unreachable given the `!text` guard in
+  // parseCompositeResistanceList, kept only so this never throws.
+  return { types: [trimmed.toLowerCase()], nonmagical, bypassedBy }
 }
 
 export function parseCompositeResistanceList(

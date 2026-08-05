@@ -219,6 +219,113 @@ outline.md's Open Questions appendix — resolve that first rather than guessing
 
 ---
 
+## Phase 2.6 — Schema Expansion (extraData → columns unification)
+
+> Decisions, updated Prisma models, and full reasoning:
+> `schema-expansion-design-handoff.md` (session narrative:
+> `schema-expansion-session-log.md`). Resolves the open questions in
+> `schema-expansion-design-review.md`, informed by the three extraData
+> frequency audits. Every item below is a direct copy of the handoff's
+> "Implementation Instructions for Claude Code" — see that doc for the _why_
+> behind each one before starting.
+
+1. [x] Add `ContentClassFeature` model to `schema.prisma`; add
+       `features ContentClassFeature[]` to `ContentClass` and `ContentSubclass`
+2. [x] Add `experiencePoints Int` to `ContentMonster`; remove it from that
+       model's `extraData` comment
+3. [x] Run `prisma migrate dev --name schema-expansion-phase-1` — hand-edited
+       the generated migration to backfill `0` during the SQLite table-rebuild
+       copy (no `NOT NULL` default possible on ALTER TABLE with existing rows);
+       safe since a full wipe-and-reimport followed immediately in this same pass
+4. [x] Open5e monster transform: write `experiencePoints` to the new column
+       (existing passthrough value, relocated out of `extraData`)
+5. [x] Compendium monster transform: compute `experiencePoints` from
+       `challengeRating` via the standard 5e CR-to-XP table (no XML field
+       exists for it — a new computed value, not a passthrough)
+6. [x] Open5e monster transform: read `damage_resistances_display`/`damage_immunities_display`/
+       `damage_vulnerabilities_display`/`condition_immunities_display` and run
+       them through the same composite parser Compendium uses
+       (`shared/resistance.ts`), replacing the current flat-array passthrough.
+       **Verified live** (not just Aboleth): pulled all 331 real SRD-2024
+       creatures — `_display` is a plain comma-joined list on every one, no
+       real monster in this dataset ever uses a qualified/nonmagical template,
+       so parsing is forward-compatible rather than fixing a live discrepancy
+       today. Falls back to reconstructing a comma string from the flat array
+       if `_display` is ever empty while the array isn't (never observed live).
+7. [x] Compendium spell transform: rename `extraData.scalingDice` →
+       `extraData.scaling` in the unified shape (`{trigger, triggerValue,
+       dice, description}`), setting `trigger` from `spell.level` (`0` →
+       `character_level`, else `slot_level`)
+8. [x] Open5e spell transform: rename `extraData.castingOptions` →
+       `extraData.scaling` in the same unified shape, dropping the unused
+       duration/range/concentration/shape_size fields — confirmed live
+       (cantrip _and_ leveled-spell samples) these are always null; real
+       finding: cantrips use `type: "player_level_N"`, leveled spells use
+       `"slot_level_N"` — same trailing `_N` extracted as `triggerValue` either way
+9. [x] Write new Compendium spell prose-parsers for `savingThrow`,
+       `damageRoll`, `damageTypes`, `materialConsumed`, `attackRoll`.
+       Validated against real Fireball text (`extractSavingThrow`/`extractDamage`
+       find "Dexterity saving throw"/"8d6 Fire damage" correctly) plus
+       synthetic cases for the flat-number damage variant and consumption clause
+10. [x] Build `ContentClassFeature` population logic in both transforms:
+        explode Open5e's grouped `levels[]` features into one row per level;
+        write Compendium's already-one-row-per-level features directly.
+        Removed `features` from both models' `extraData`. Live count after
+        reimport: 2,881 rows (861 class-level, 2,020 subclass-level)
+11. [x] **[FALSE PREMISE — no fix applied]** Investigated the described
+        `isMartial` bug (an `M` code collision between `<item><type>` and
+        `<item><property>`) before touching code. Verified against the live
+        DB and raw XML first: `isMartial` already has real, correct variation
+        (known simple weapons false, known martial weapons true — the
+        transform already reads `<property>`, not `<type>`). Applying the
+        prescribed fix would have broken working logic, so it was skipped.
+        One much smaller real gap remains and is out of scope: a handful of
+        named magic-weapon variants (e.g. `Flail [5.5e]`) have no
+        `<property>` tag in the source XML at all
+12. [x] Add the existing `inferProficiencyBonus(cr)` fallback (already written
+        for Open5e) to the Compendium monster transform's `proficiencyBonus`
+        derivation. Live result: monsters with `proficiencyBonus: 0` dropped
+        from 2,641 to 35 (the residual 35 are CR-0 summoned/template stat
+        blocks — e.g. a Ranger's Beast of the Land/Sea/Sky — where a real
+        "Proficiency Bonus" trait _is_ present but its text is contextual
+        prose, not a number, so the CR-fallback path correctly never fires;
+        a separate, much smaller residual, not the bug this item targeted)
+13. [x] Add `casterType` inference to the Compendium class transform:
+        `spellcastingAbility === null` → `NONE`; `slotsReset === "S"` →
+        `PACT`; otherwise consult a new hardcoded per-class `FULL`/`HALF`
+        lookup table (slotsReset alone can't distinguish these two — both
+        reset on long rest). Live distribution: FULL=5, HALF=5, NONE=5,
+        PACT=2, unset=8 (unrecognized/homebrew classes, correctly left unset
+        rather than guessed)
+14. [x] **[FALSE PREMISE — not implemented]** Checked all 9 real SRD-2024
+        species' trait names live before writing any parser: none has a
+        "Creature Type," "Ability Score," "Proficiency," "Languages,"
+        "Weapon," or "Tool" trait — 2024 species restructured these concepts
+        entirely (ability scores moved to Background, languages are no
+        longer species-granted, proficiencies appear as named ability traits
+        like "Skillful" instead of a generic grant). A parser against fields
+        that don't exist in the only real dataset available would be dead
+        code, so none was written
+15. [x] Filed `ContentSubrace.extraData.descriptionStrippingSkipped` being
+        `true` on 100% of real subraces as a known issue in the Phase 2.6 dev
+        log — **not** fixed inline, out of scope as specified
+16. [ ] Re-run all three extraData frequency audits
+        (`extradata-key-frequency-audit.md`, `-compendium.md`, `-combined.md`)
+        against fresh imports to confirm the shapes actually converge —
+        **not done this session**, flagged as a real follow-up (spot-checks
+        in the dev log confirm the new shapes/values are populating
+        correctly, but a full audit re-run is separate, substantial work)
+17. [x] Wrote/updated Phase 2.6 tests: 18 new tests (unified resistance shape
+        from both sources including the multi-condition-collapse fix; unified
+        spell scaling shape from both sources with the `level === 0` vs.
+        slot-level trigger split, against real Fireball fixtures on both
+        sides; `ContentClassFeature` population/explosion at both the
+        transform and orchestrator-integration level; the `proficiencyBonus`
+        fix producing a real CR-based value instead of a different constant).
+        122/122 tests passing (104 pre-existing + 18 new)
+
+---
+
 ## Phase 3 — Read API
 
 - [ ] Confirm/add `?fields=name` lightweight mode to the shared query pattern

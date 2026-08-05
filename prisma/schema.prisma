@@ -80,10 +80,11 @@ model ContentSpell {
   ritual        Boolean
   classes       String // JSON array of class display names
   description   String
-  higherLevels  String?
-  extraData     String? // castingOptions, damageRoll, damageTypes, savingThrow,
-  // attackRoll, targetType/targetCount, shape info, reactionCondition,
-  // materialCost, materialConsumed
+  higherLevels  String? // free-text "At Higher Levels" prose, kept alongside extraData.scaling
+  extraData     String? // scaling[] (both sources — { trigger: "slot_level" | "character_level",
+  // triggerValue: number | null, dice: string, description: string | null }),
+  // damageRoll, damageTypes, savingThrow, attackRoll, materialConsumed (both
+  // sources), targetType/targetCount, shape info, reactionCondition, materialCost
 
   @@unique([sourceId, slug])
   @@index([level])
@@ -104,10 +105,11 @@ model ContentClass {
   skillChoices        String // JSON, Fixed/Choice Grant Shape
   spellcastingAbility String?
   description         String
-  extraData           String? // casterType, features[] (name/description/type/levels)
+  extraData           String? // casterType (FULL/HALF/NONE/PACT, both sources), toolProfs/slotsReset (Compendium only)
 
   subclasses   ContentSubclass[]
   classOptions ContentClassOption[]
+  features     ContentClassFeature[]
 
   @@unique([sourceId, slug])
 }
@@ -121,9 +123,31 @@ model ContentSubclass {
   class       ContentClass? @relation(fields: [classId], references: [id], onDelete: SetNull)
   name        String
   description String
-  extraData   String? // features[]; unresolvedClassName if cross-source resolution (see Compendium docs) fails
+  extraData   String? // unresolvedClassName if cross-source resolution (see Compendium docs) fails
+
+  features ContentClassFeature[]
 
   @@unique([sourceId, slug])
+}
+
+// Phase 2.6 — one row per level, not one row per feature-that-may-recur:
+// Open5e's grouped {levels: [4,8,12,16]} entries explode into 4 rows here to
+// match Compendium's native one-row-per-<autolevel level="N"> granularity.
+// A row belongs to exactly one of classId/subclassId; not enforceable at the
+// Prisma level, validated in the transform layer before insert.
+model ContentClassFeature {
+  id          String           @id @default(cuid())
+  classId     String?
+  class       ContentClass?    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subclassId  String?
+  subclass    ContentSubclass? @relation(fields: [subclassId], references: [id], onDelete: Cascade)
+  level       Int
+  name        String
+  description String
+  type        String? // Open5e's feature-type tag when known (e.g. CLASS_LEVEL_FEATURE); null on Compendium rows
+
+  @@index([classId, level])
+  @@index([subclassId, level])
 }
 
 model ContentRace {
@@ -231,19 +255,20 @@ model ContentMonster {
   abilityScores         String // JSON
   savingThrows          String?
   skills                String?
-  damageResistances     String?
-  damageImmunities      String?
-  damageVulnerabilities String?
-  conditionImmunities   String?
+  damageResistances     String? // JSON array: [{ types: string[], nonmagical: boolean, bypassedBy: string | null }]
+  damageImmunities      String? // same shape as damageResistances
+  damageVulnerabilities String? // same shape as damageResistances
+  conditionImmunities   String? // same shape as damageResistances (types = condition names)
   senses                String?
   languages             String?
   challengeRating       String
+  experiencePoints      Int // computed from challengeRating at import time, both sources — Phase 2.6
   actions               String // JSON array, each tagged actionType: "action"|"bonus"|"reaction"
   legendaryActions      String?
   description           String?
   extraData             String? // armorClassDetail, lairActions, traits[], spellcasting,
-  // proficiencyBonus, legendaryResistances, experiencePoints,
-  // category/subcategory
+  // proficiencyBonus, legendaryResistances, category/subcategory,
+  // ancestry, environment, telepathyRange (Compendium only)
 
   @@unique([sourceId, slug])
   @@index([challengeRating])

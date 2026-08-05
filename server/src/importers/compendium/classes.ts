@@ -3,6 +3,7 @@ import { ClassSchema, SubclassSchema } from '../../schemas/content/class.js'
 import { ABILITY_NAME_TO_CODE } from '../open5e/abilities.js'
 import { splitOptionList } from '../open5e/proseGrant.js'
 import { slugify } from '../../utils/slugify.js'
+import type { ExplodedClassFeature } from '../shared/classFeature.js'
 import { toJsonString } from '../utils/json.js'
 import { extractCitation } from './citation.js'
 import { parseNameTags } from './nameTags.js'
@@ -11,6 +12,36 @@ import type { CompendiumAutolevelFeature, CompendiumClass } from './types.js'
 import type { TransformedRecord } from './feats.js'
 
 const ABILITY_NAMES = new Set(Object.keys(ABILITY_NAME_TO_CODE))
+
+// Phase 2.6 casterType inference (Compendium has no equivalent field at
+// all): `spellcastingAbility === null` unambiguously means NONE, and
+// `slotsReset === "S"` unambiguously means PACT (short-rest recovery is
+// the defining trait of Pact Magic) — but `slotsReset === "L"` alone can't
+// distinguish FULL from HALF, since both caster tiers reset on a long
+// rest. Only covers the classes where that ambiguity is real and resolvable
+// (official full/half casters); anything else is left unset rather than
+// guessed — same "never guess wrong" precedent as PRIMARY_ABILITY_BY_CLASS
+// below, which also only covers the classes it can state with confidence.
+const CASTER_TYPE_BY_CLASS: Record<string, 'FULL' | 'HALF'> = {
+  Bard: 'FULL',
+  Cleric: 'FULL',
+  Druid: 'FULL',
+  Sorcerer: 'FULL',
+  Wizard: 'FULL',
+  Artificer: 'HALF',
+  Paladin: 'HALF',
+  Ranger: 'HALF',
+}
+
+function inferCasterType(
+  className: string,
+  spellcastingAbility: string | null,
+  slotsReset: string | undefined,
+): string | null {
+  if (!spellcastingAbility) return 'NONE'
+  if (slotsReset === 'S') return 'PACT'
+  return CASTER_TYPE_BY_CLASS[className] ?? null
+}
 
 // No Compendium field exists for primary/multiclassing ability at all
 // (<spellAbility> is casting ability, a different concept) — same
@@ -106,13 +137,17 @@ function groupIntoSubclasses(features: FlatFeature[]): {
   return { groups, baseFeatures }
 }
 
-function toFeatureRecord(f: FlatFeature) {
+// Phase 2.6: Compendium's <autolevel level="N"> structure is already
+// one-row-per-level natively — `type` stays null, Compendium has no
+// equivalent of Open5e's feature-type tag.
+function toFeatureRecord(f: FlatFeature): ExplodedClassFeature {
   const citation = extractCitation(f.raw.text)
-  return { name: f.raw.name, description: citation.cleanedText, level: f.level }
+  return { name: f.raw.name, description: citation.cleanedText, level: f.level, type: null }
 }
 
 export interface TransformedClassResult {
   classResult: TransformedRecord<Prisma.ContentClassCreateManyInput>
+  classFeatures: ExplodedClassFeature[]
   // parentClassName carries the *base class's* name (e.g. "Cleric"), not
   // the subclass's own — cross-source parent resolution needs to search
   // for a ContentClass matching the parent, and the two names are easy to
@@ -121,6 +156,7 @@ export interface TransformedClassResult {
     row: Omit<Prisma.ContentSubclassCreateManyInput, 'classId'>
     source: ResolvedCompendiumSource
     parentClassName: string
+    features: ExplodedClassFeature[]
   }[]
 }
 
@@ -148,9 +184,11 @@ export function transformCompendiumClass(raw: CompendiumClass): TransformedClass
     logic: 'OR' as const,
   }
 
-  const extraData: Record<string, unknown> = {
-    features: baseFeatures.map(toFeatureRecord),
-  }
+  const spellcastingAbility = raw.spellAbility ?? null
+  const casterType = inferCasterType(tags.name, spellcastingAbility, raw.slotsReset)
+
+  const extraData: Record<string, unknown> = {}
+  if (casterType) extraData.casterType = casterType
   if (tags.edition) extraData.edition = tags.edition
   if (tags.homebrew) extraData.homebrew = true
   if (tags.thirdParty) extraData.thirdParty = true
@@ -174,9 +212,9 @@ export function transformCompendiumClass(raw: CompendiumClass): TransformedClass
     armorProfs,
     weaponProfs,
     skillChoices,
-    spellcastingAbility: raw.spellAbility ?? null,
+    spellcastingAbility,
     description: citation.cleanedText || '',
-    extraData,
+    extraData: Object.keys(extraData).length > 0 ? extraData : null,
   })
 
   const classResult: TransformedRecord<Prisma.ContentClassCreateManyInput> = {
@@ -210,7 +248,7 @@ export function transformCompendiumClass(raw: CompendiumClass): TransformedClass
     const markerCitation = extractCitation(group.marker.raw.text)
     const subSource = resolveCompendiumSource(markerCitation.book)
 
-    const subExtraData: Record<string, unknown> = { features: group.children.map(toFeatureRecord) }
+    const subExtraData: Record<string, unknown> = {}
     if (subTags.edition) subExtraData.edition = subTags.edition
     if (subTags.homebrew) subExtraData.homebrew = true
     if (subTags.thirdParty) subExtraData.thirdParty = true
@@ -224,7 +262,7 @@ export function transformCompendiumClass(raw: CompendiumClass): TransformedClass
       classId: null,
       name: subTags.name,
       description: markerCitation.cleanedText || '',
-      extraData: subExtraData,
+      extraData: Object.keys(subExtraData).length > 0 ? subExtraData : null,
     })
 
     subclasses.push({
@@ -237,8 +275,9 @@ export function transformCompendiumClass(raw: CompendiumClass): TransformedClass
       },
       source: subSource,
       parentClassName: tags.name,
+      features: group.children.map(toFeatureRecord),
     })
   }
 
-  return { classResult, subclasses }
+  return { classResult, classFeatures: baseFeatures.map(toFeatureRecord), subclasses }
 }

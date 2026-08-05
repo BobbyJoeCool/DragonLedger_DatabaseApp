@@ -83,17 +83,79 @@ function spellFixture(name: string) {
   }
 }
 
+function classFixture() {
+  return {
+    key: 'test-doc_test-class',
+    name: 'Test Class',
+    desc: 'A test class.',
+    document: { key: 'test-doc', name: 'Test Doc' },
+    hit_dice: 'd8',
+    hit_points: null,
+    primary_abilities: [],
+    saving_throws: [],
+    caster_type: 'NONE',
+    subclass_of: null,
+    features: [
+      {
+        key: 'test-doc_recurring-feature',
+        name: 'Recurring Feature',
+        desc: 'Grows stronger.',
+        feature_type: 'CLASS_LEVEL_FEATURE',
+        gained_at: [
+          { level: 4, detail: null },
+          { level: 8, detail: null },
+        ],
+        data_for_class_table: [],
+      },
+    ],
+  }
+}
+
 describe('importSource orchestrator', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
   })
 
   afterAll(async () => {
+    await prisma.contentClassFeature.deleteMany({
+      where: { OR: [{ class: { sourceId: SOURCE_ID } }, { subclass: { sourceId: SOURCE_ID } }] },
+    })
+    await prisma.contentClass.deleteMany({ where: { sourceId: SOURCE_ID } })
     await prisma.contentSpell.deleteMany({ where: { sourceId: SOURCE_ID } })
     await prisma.contentCondition.deleteMany({ where: { sourceId: SOURCE_ID } })
     await prisma.importJob.deleteMany({ where: { sourceId: SOURCE_ID } })
     await prisma.source.deleteMany({ where: { id: SOURCE_ID } })
     writeLog('orchestrator: suite done')
+  })
+
+  it("explodes a grouped gained_at feature into one ContentClassFeature row per level, FK'd to the real inserted class (Phase 2.6)", async () => {
+    vi.stubGlobal(
+      'fetch',
+      mockFetchRouter({
+        '/classes/': { results: [classFixture()], next: null },
+      }),
+    )
+
+    const jobId = await createJob()
+    await importSource({
+      sourceId: SOURCE_ID,
+      sourceName: 'Test Source',
+      contentTypes: ['CLASS'],
+      jobId,
+    })
+
+    const cls = await prisma.contentClass.findFirstOrThrow({
+      where: { sourceId: SOURCE_ID, name: 'Test Class' },
+    })
+    const features = await prisma.contentClassFeature.findMany({ where: { classId: cls.id } })
+    expect(features).toHaveLength(2)
+    expect(features.map((f) => f.level).sort()).toEqual([4, 8])
+    expect(features.every((f) => f.name === 'Recurring Feature')).toBe(true)
+    expect(features.every((f) => f.subclassId === null)).toBe(true)
+
+    writeLog(
+      'orchestrator: CLASS import explodes gained_at into per-level ContentClassFeature rows [PASS]',
+    )
   })
 
   it('imports fresh data and marks the job COMPLETED', async () => {

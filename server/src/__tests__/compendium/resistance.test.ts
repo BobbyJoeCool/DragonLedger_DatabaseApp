@@ -8,7 +8,9 @@ describe('parseCompositeResistanceList', () => {
   })
 
   it('parses a single plain damage type as a simple entry', () => {
-    expect(parseCompositeResistanceList('fire')).toEqual([{ type: 'fire' }])
+    expect(parseCompositeResistanceList('fire')).toEqual([
+      { types: ['fire'], nonmagical: false, bypassedBy: null },
+    ])
   })
 
   it('recognizes the composite "physical from nonmagical, unless silvered" template as one atomic entry', () => {
@@ -22,11 +24,25 @@ describe('parseCompositeResistanceList', () => {
 
   it('splits multiple semicolon-separated clauses into separate entries', () => {
     const result = parseCompositeResistanceList('poison; fire')
-    expect(result).toEqual([{ type: 'poison' }, { type: 'fire' }])
+    expect(result).toEqual([
+      { types: ['poison'], nonmagical: false, bypassedBy: null },
+      { types: ['fire'], nonmagical: false, bypassedBy: null },
+    ])
   })
 
   it('falls back to storing the raw clause when no recognized damage-type word is found', () => {
     const result = parseCompositeResistanceList('charmed')
-    expect(result).toEqual([{ type: 'charmed' }])
+    expect(result).toEqual([{ types: ['charmed'], nonmagical: false, bypassedBy: null }])
+  })
+
+  it('splits a multi-condition clause into separate condition names, not one opaque string (real fixed bug)', () => {
+    const result = parseCompositeResistanceList('charmed, exhaustion, frightened, poisoned')
+    expect(result).toEqual([
+      {
+        types: ['charmed', 'exhaustion', 'frightened', 'poisoned'],
+        nonmagical: false,
+        bypassedBy: null,
+      },
+    ])
   })
 })

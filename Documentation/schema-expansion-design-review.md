@@ -1,5 +1,12 @@
 # Schema Expansion Design Review
 
+> **Status: resolved.** The open questions below were worked through in an
+> offline design session on August 5, 2026. Decisions, updated Prisma models,
+> and an implementation checklist live in `schema-expansion-design-handoff.md`
+> (session narrative in `schema-expansion-session-log.md`); the tracked task
+> list is `tasks.md`'s Phase 2.6. This document is kept as-is as the context
+> record that session worked from — read the handoff for what to actually build.
+
 **Purpose of this document:** a self-contained reference for an offline
 design discussion (with another AI or a person, outside this repo) about
 whether/how to promote fields currently buried in each content table's
@@ -63,16 +70,16 @@ key per content row.
      exists from a prior Compendium import) → skip unconditionally, no
      exceptions.
   2. **Cross-source match** (a same-named row exists in an `API`-type
-     source, *and* this record's cited book has a known mapping to an
+     source, _and_ this record's cited book has a known mapping to an
      Open5e document key — see `COMPENDIUM_TO_OPEN5E_SOURCE` in
      `sourceBooks.ts`) → pause the whole job as `AWAITING_CONFIRMATION`
      the first time this happens, surfacing every pending match to the
      user; the caller resumes with `duplicateDecision: 'duplicate' |
-     'skip'`, applied to the *entire batch* at once, not per-record.
+'skip'`, applied to the _entire batch_ at once, not per-record.
   3. Neither → insert fresh.
-  This means a Compendium import never silently overwrites a local edit,
-  and never silently creates a duplicate of content that (probably)
-  already exists from Open5e.
+     This means a Compendium import never silently overwrites a local edit,
+     and never silently creates a duplicate of content that (probably)
+     already exists from Open5e.
 - **One `Source` row per cited book, not per import run.** Every record's
   free-text body ends with a `Source:\t<Book> p. <N>` citation line
   (`compendium/citation.ts`); the book name is slugified into
@@ -414,23 +421,23 @@ markdown-table parsing — inherently best-effort).
 
 ### ContentSpell
 
-| Column | Open5e method | Compendium method |
-|---|---|---|
-| `name` | passthrough (`raw.name`) | parsed (name-tag-stripped `tags.name`) |
-| `level` | passthrough | passthrough (`Number(raw.level)`) |
-| `school` | passthrough (`raw.school.key`) | inferred (single-letter code → full name via `SCHOOL_CODES` map; falls back to lowercased raw value if code unrecognized) |
-| `castingTime`/`range`/`duration` | passthrough | passthrough |
-| `components` | composed (V/S/M flags → `"V, S, M"` string) | passthrough (`raw.components` is already a formatted string in the XML) |
-| `material` | passthrough (`raw.material_specified`) | **not populated** (`null` — Compendium's `<components>` doesn't separately break out material text) |
-| `concentration` | passthrough (`raw.concentration` boolean) | parsed (regex test for `"concentration"` in the duration string) |
-| `ritual` | passthrough (`raw.ritual` boolean) | parsed (presence of the `<ritual>` element at all, `raw.ritual !== undefined`) |
-| `classes` | passthrough (mapped from an array of class objects) | parsed (comma-split of the `<classes>` text field) |
-| `description` | passthrough (`raw.desc`) | parsed (citation-stripped body text, see `citation.ts`) |
-| `higherLevels` | passthrough (`raw.higher_level`) | **not populated** (`null` — no separate field in Compendium XML; upcast text stays embedded in `description`) |
+| Column                           | Open5e method                                       | Compendium method                                                                                                         |
+| -------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `name`                           | passthrough (`raw.name`)                            | parsed (name-tag-stripped `tags.name`)                                                                                    |
+| `level`                          | passthrough                                         | passthrough (`Number(raw.level)`)                                                                                         |
+| `school`                         | passthrough (`raw.school.key`)                      | inferred (single-letter code → full name via `SCHOOL_CODES` map; falls back to lowercased raw value if code unrecognized) |
+| `castingTime`/`range`/`duration` | passthrough                                         | passthrough                                                                                                               |
+| `components`                     | composed (V/S/M flags → `"V, S, M"` string)         | passthrough (`raw.components` is already a formatted string in the XML)                                                   |
+| `material`                       | passthrough (`raw.material_specified`)              | **not populated** (`null` — Compendium's `<components>` doesn't separately break out material text)                       |
+| `concentration`                  | passthrough (`raw.concentration` boolean)           | parsed (regex test for `"concentration"` in the duration string)                                                          |
+| `ritual`                         | passthrough (`raw.ritual` boolean)                  | parsed (presence of the `<ritual>` element at all, `raw.ritual !== undefined`)                                            |
+| `classes`                        | passthrough (mapped from an array of class objects) | parsed (comma-split of the `<classes>` text field)                                                                        |
+| `description`                    | passthrough (`raw.desc`)                            | parsed (citation-stripped body text, see `citation.ts`)                                                                   |
+| `higherLevels`                   | passthrough (`raw.higher_level`)                    | **not populated** (`null` — no separate field in Compendium XML; upcast text stays embedded in `description`)             |
 
 **Compendium-only content hijacking this same table's schema**: records
 whose `<classes>` field matches a `"<Pool> Options"` pattern (Maneuvers,
-Metamagic, Eldritch Invocations, and others) are *not* stored as
+Metamagic, Eldritch Invocations, and others) are _not_ stored as
 `ContentSpell` at all — they're redirected to `ContentClassOption` instead
 (see `compendium/spells.ts`'s `detectClassOptionPool`). Open5e has no
 equivalent redirection logic since its API has no such records mixed into
@@ -438,50 +445,50 @@ its spell endpoint.
 
 ### ContentMonster
 
-| Column | Open5e method | Compendium method |
-|---|---|---|
-| `name` | passthrough | parsed (name-tag-stripped) |
-| `size`/`monsterType`/`alignment` | passthrough (keyed lookup objects) | passthrough (plain strings) |
-| `armorClass` | passthrough (`raw.armor_class`) | parsed (`Number(raw.ac)`, `raw.ac` is `number \| string` in the raw XML) |
-| `hitPoints`/`hitDice` | passthrough (two separate raw fields) | parsed (single `"91 (14d8+28)"`-style string split via regex into both) |
-| `speed` | passthrough (`raw.speed_all`, already an object) | parsed (`"30 ft., fly 60 ft."`-style string parsed into `{walk, fly, ...}` via regex) |
-| `abilityScores` | passthrough (already an object) | composed (6 separate raw scalar fields → one object) |
-| `savingThrows`/`skills` | passthrough (already keyed objects) | parsed (`"Dex +5, Wis +3"`-style comma text parsed into keyed objects) |
-| `damageResistances`/`Immunities`/`Vulnerabilities`/`conditionImmunities` | passthrough of a pre-split array (`.key` extracted, qualifiers **discarded**) | parsed (free-text semicolon/comma prose → composite object array via `shared/resistance.ts`, qualifiers **preserved**) — **incompatible value shapes, see §4** |
-| `senses` | composed (darkvision/blindsight/tremorsense/truesight/passive-perception fields joined into one string) | composed (raw `<senses>` + passive-perception joined) |
-| `languages` | passthrough (`raw.languages.as_string`) | passthrough (`raw.languages`) |
-| `challengeRating` | inferred+parsed (`formatChallengeRating()` converts a raw float like `0.25` to `"1/4"`) | passthrough (already a fraction-formatted string/number in XML) |
-| `actions` | parsed (filtered by `action_type` enum, dice composed from 3 separate fields via `composeAttackDice()`) | parsed (filtered by name-suffix convention `"(Bonus Action)"`/`"(Reaction)"`, dice parsed from a pipe-delimited `"Label\|ToHit\|Dice"` string) |
-| `legendaryActions` | parsed (same action filter/compose as `actions`, `action_type === 'LEGENDARY_ACTION'`) | parsed (from a separate `<legendary>` element list, filtered to exclude lair actions and the "Legendary Actions" header entry) |
-| `description` | passthrough (`raw.description`) | parsed (citation-stripped body text) |
+| Column                                                                   | Open5e method                                                                                           | Compendium method                                                                                                                                              |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`                                                                   | passthrough                                                                                             | parsed (name-tag-stripped)                                                                                                                                     |
+| `size`/`monsterType`/`alignment`                                         | passthrough (keyed lookup objects)                                                                      | passthrough (plain strings)                                                                                                                                    |
+| `armorClass`                                                             | passthrough (`raw.armor_class`)                                                                         | parsed (`Number(raw.ac)`, `raw.ac` is `number \| string` in the raw XML)                                                                                       |
+| `hitPoints`/`hitDice`                                                    | passthrough (two separate raw fields)                                                                   | parsed (single `"91 (14d8+28)"`-style string split via regex into both)                                                                                        |
+| `speed`                                                                  | passthrough (`raw.speed_all`, already an object)                                                        | parsed (`"30 ft., fly 60 ft."`-style string parsed into `{walk, fly, ...}` via regex)                                                                          |
+| `abilityScores`                                                          | passthrough (already an object)                                                                         | composed (6 separate raw scalar fields → one object)                                                                                                           |
+| `savingThrows`/`skills`                                                  | passthrough (already keyed objects)                                                                     | parsed (`"Dex +5, Wis +3"`-style comma text parsed into keyed objects)                                                                                         |
+| `damageResistances`/`Immunities`/`Vulnerabilities`/`conditionImmunities` | passthrough of a pre-split array (`.key` extracted, qualifiers **discarded**)                           | parsed (free-text semicolon/comma prose → composite object array via `shared/resistance.ts`, qualifiers **preserved**) — **incompatible value shapes, see §4** |
+| `senses`                                                                 | composed (darkvision/blindsight/tremorsense/truesight/passive-perception fields joined into one string) | composed (raw `<senses>` + passive-perception joined)                                                                                                          |
+| `languages`                                                              | passthrough (`raw.languages.as_string`)                                                                 | passthrough (`raw.languages`)                                                                                                                                  |
+| `challengeRating`                                                        | inferred+parsed (`formatChallengeRating()` converts a raw float like `0.25` to `"1/4"`)                 | passthrough (already a fraction-formatted string/number in XML)                                                                                                |
+| `actions`                                                                | parsed (filtered by `action_type` enum, dice composed from 3 separate fields via `composeAttackDice()`) | parsed (filtered by name-suffix convention `"(Bonus Action)"`/`"(Reaction)"`, dice parsed from a pipe-delimited `"Label\|ToHit\|Dice"` string)                 |
+| `legendaryActions`                                                       | parsed (same action filter/compose as `actions`, `action_type === 'LEGENDARY_ACTION'`)                  | parsed (from a separate `<legendary>` element list, filtered to exclude lair actions and the "Legendary Actions" header entry)                                 |
+| `description`                                                            | passthrough (`raw.description`)                                                                         | parsed (citation-stripped body text)                                                                                                                           |
 
 ### ContentItem
 
-| Column | Open5e method | Compendium method |
-|---|---|---|
-| `name` | passthrough | parsed (name-tag-stripped) |
-| `itemType` | inferred (armor category, or `raw.category.key` fallback) | inferred (single-letter type code → display string via `TYPE_TO_ITEM_TYPE` map; falls back to lowercased code) |
-| `rarity` | passthrough (magic items only, `raw.rarity.key`) | parsed (extracted from a combined `<detail>` string like `"rare (requires attunement by a warforged)"` via `parseDetail()`) |
-| `requiresAttunement` | passthrough (magic items only) | parsed (regex test for `"attunement"` inside `<detail>`) |
-| `cost` | composed (`parseFloat` + `" gp"` suffix) | composed (`${raw.value} gp`) |
-| `weight` | composed (`parseFloat` + `String()`) | passthrough (`String(raw.weight)`) |
-| `damage` | composed (dice + damage-type key joined) | composed (`raw.dmg1` + damage-type code lookup via `DAMAGE_TYPE_CODES`) |
-| `armorClass` | passthrough (`String(a.ac_base)`, armor only) | passthrough (`String(raw.ac)`) |
-| `properties` | parsed (`properties[].property.name` — a real live-data correction, the design doc originally assumed a shallower path) | inferred (comma-split single-letter codes → display names via `PROPERTY_CODES` map; `M` code specifically pulled out into `extraData.isMartial` rather than kept as a property) |
-| `description` | passthrough (`raw.desc`) | parsed (citation-stripped) |
+| Column               | Open5e method                                                                                                           | Compendium method                                                                                                                                                               |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`               | passthrough                                                                                                             | parsed (name-tag-stripped)                                                                                                                                                      |
+| `itemType`           | inferred (armor category, or `raw.category.key` fallback)                                                               | inferred (single-letter type code → display string via `TYPE_TO_ITEM_TYPE` map; falls back to lowercased code)                                                                  |
+| `rarity`             | passthrough (magic items only, `raw.rarity.key`)                                                                        | parsed (extracted from a combined `<detail>` string like `"rare (requires attunement by a warforged)"` via `parseDetail()`)                                                     |
+| `requiresAttunement` | passthrough (magic items only)                                                                                          | parsed (regex test for `"attunement"` inside `<detail>`)                                                                                                                        |
+| `cost`               | composed (`parseFloat` + `" gp"` suffix)                                                                                | composed (`${raw.value} gp`)                                                                                                                                                    |
+| `weight`             | composed (`parseFloat` + `String()`)                                                                                    | passthrough (`String(raw.weight)`)                                                                                                                                              |
+| `damage`             | composed (dice + damage-type key joined)                                                                                | composed (`raw.dmg1` + damage-type code lookup via `DAMAGE_TYPE_CODES`)                                                                                                         |
+| `armorClass`         | passthrough (`String(a.ac_base)`, armor only)                                                                           | passthrough (`String(raw.ac)`)                                                                                                                                                  |
+| `properties`         | parsed (`properties[].property.name` — a real live-data correction, the design doc originally assumed a shallower path) | inferred (comma-split single-letter codes → display names via `PROPERTY_CODES` map; `M` code specifically pulled out into `extraData.isMartial` rather than kept as a property) |
+| `description`        | passthrough (`raw.desc`)                                                                                                | parsed (citation-stripped)                                                                                                                                                      |
 
 ### ContentClass / ContentSubclass
 
-| Column | Open5e method | Compendium method |
-|---|---|---|
-| `name` | passthrough | parsed (name-tag-stripped) |
-| `hitDie` | inferred, 5-level fallback chain: nested `hit_points.hit_dice` → a parsed `CORE_TRAITS_TABLE` markdown row → top-level `hit_dice` string → a feature-text scan → a hardcoded per-class table | inferred (`Number(raw.hd) || 8`, direct XML attribute with a static fallback) |
-| `primaryAbility` | parsed (a `CORE_TRAITS_TABLE` markdown-pipe-table row, "and"/"or" logic detected via regex) with a `primary_abilities[]` API-field fallback | inferred (hardcoded `PRIMARY_ABILITY_BY_CLASS` table — no Compendium XML field states this concept at all, `<spellAbility>` is a different, narrower concept) |
-| `savingThrows` | parsed (same `CORE_TRAITS_TABLE` row) | parsed (`<proficiency>` text split into ability-name tokens vs. skill-name tokens by matching against a known ability-name set) |
-| `armorProfs`/`weaponProfs` | parsed (`CORE_TRAITS_TABLE` rows, `"none"` → empty array) | passthrough-ish (`<armor>`/`<weapons>` raw text kept as a single-element array unless `"none"`) |
-| `skillChoices` | parsed (`CORE_TRAITS_TABLE`'s "Skill Proficiencies" row → `parseProficiencyGrant()`) | parsed (`<proficiency>`'s non-ability tokens, count from `<numSkills>`) |
-| `spellcastingAbility` | inferred (hardcoded `SPELLCASTING_ABILITY_BY_CLASS` table, gated on caster type) | passthrough (`raw.spellAbility` — a real dedicated XML field Open5e's API has no equivalent for) |
-| `description` | passthrough | parsed (joined from the class's first `<trait>` element(s), citation-stripped) |
+| Column                     | Open5e method                                                                                                                                                                                | Compendium method                                                                                                                                             |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- | ------------------------------------------------ |
+| `name`                     | passthrough                                                                                                                                                                                  | parsed (name-tag-stripped)                                                                                                                                    |
+| `hitDie`                   | inferred, 5-level fallback chain: nested `hit_points.hit_dice` → a parsed `CORE_TRAITS_TABLE` markdown row → top-level `hit_dice` string → a feature-text scan → a hardcoded per-class table | inferred (`Number(raw.hd)                                                                                                                                     |     | 8`, direct XML attribute with a static fallback) |
+| `primaryAbility`           | parsed (a `CORE_TRAITS_TABLE` markdown-pipe-table row, "and"/"or" logic detected via regex) with a `primary_abilities[]` API-field fallback                                                  | inferred (hardcoded `PRIMARY_ABILITY_BY_CLASS` table — no Compendium XML field states this concept at all, `<spellAbility>` is a different, narrower concept) |
+| `savingThrows`             | parsed (same `CORE_TRAITS_TABLE` row)                                                                                                                                                        | parsed (`<proficiency>` text split into ability-name tokens vs. skill-name tokens by matching against a known ability-name set)                               |
+| `armorProfs`/`weaponProfs` | parsed (`CORE_TRAITS_TABLE` rows, `"none"` → empty array)                                                                                                                                    | passthrough-ish (`<armor>`/`<weapons>` raw text kept as a single-element array unless `"none"`)                                                               |
+| `skillChoices`             | parsed (`CORE_TRAITS_TABLE`'s "Skill Proficiencies" row → `parseProficiencyGrant()`)                                                                                                         | parsed (`<proficiency>`'s non-ability tokens, count from `<numSkills>`)                                                                                       |
+| `spellcastingAbility`      | inferred (hardcoded `SPELLCASTING_ABILITY_BY_CLASS` table, gated on caster type)                                                                                                             | passthrough (`raw.spellAbility` — a real dedicated XML field Open5e's API has no equivalent for)                                                              |
+| `description`              | passthrough                                                                                                                                                                                  | parsed (joined from the class's first `<trait>` element(s), citation-stripped)                                                                                |
 
 Subclass: `name`/`description` follow the same passthrough/parsed split as
 Class. `classId` resolution differs sharply by source — Open5e resolves it
@@ -491,25 +498,25 @@ after insert**, cross-source-first (see §1).
 
 ### ContentRace / ContentSubrace
 
-| Column | Open5e method | Compendium method |
-|---|---|---|
-| `name` | passthrough | parsed (comma-split for parent/subrace name, then name-tag-stripped) |
-| `size` | parsed (a `"Size"`-named trait's prose text scanned for known size words, default `["medium"]`) | inferred (single-letter code → array via a lookup map, default `["medium"]`) |
-| `speed` | parsed (a `"Speed"`-named trait's prose scanned for a `"N feet"` pattern) | parsed (`<speed>` + `<speedOther>` text, the latter regex-scanned for `fly`/`swim`/`climb` sub-speeds) |
-| `traits` | passthrough-ish (every non-size/speed trait copied as `{name, description, level:1}`) **plus** per-race hardcoded "lineage" sub-parsers (5 races only: Elf/Dragonborn/Gnome/Goliath/Tiefling) that split one combined 2024 lineage-choice trait into synthetic standalone Subrace rows, each with its own bespoke markdown-table or prose parser | composed (every raw field with no dedicated column — `<ability>`, `<resist>`, `<vulnerable>`, `<conditionResist>`, `<conditionImmune>`, `<proficiency>`, `<weapons>`, `<tools>`, `<languages>` — synthesized into `traits[]` entries with a fixed label, **and** kept verbatim in `extraData.raw*` as a backup) |
-| `description` | passthrough | parsed (from a `"Description"`-named trait, citation-stripped; subrace descriptions additionally get a parent-paragraph-dedup pass, see §4) |
-| `parentRaceId` (Race only) | always `null` — Open5e's 2024 lineage races have no separate parent record | always `null` — Race is never itself a subrace |
-| `raceId` (Subrace only) | resolved in-process (2014/third-party path: real `is_subspecies:true` API record matched by `subspecies_of` key/name) **or** synthesized in-process (2024 path: no real parent lookup needed, the lineage option is derived from the same base-race record) | resolved via a **separate cross-source DB lookup after insert**, same pattern as Subclass→Class |
+| Column                     | Open5e method                                                                                                                                                                                                                                                                                                                                    | Compendium method                                                                                                                                                                                                                                                                                               |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`                     | passthrough                                                                                                                                                                                                                                                                                                                                      | parsed (comma-split for parent/subrace name, then name-tag-stripped)                                                                                                                                                                                                                                            |
+| `size`                     | parsed (a `"Size"`-named trait's prose text scanned for known size words, default `["medium"]`)                                                                                                                                                                                                                                                  | inferred (single-letter code → array via a lookup map, default `["medium"]`)                                                                                                                                                                                                                                    |
+| `speed`                    | parsed (a `"Speed"`-named trait's prose scanned for a `"N feet"` pattern)                                                                                                                                                                                                                                                                        | parsed (`<speed>` + `<speedOther>` text, the latter regex-scanned for `fly`/`swim`/`climb` sub-speeds)                                                                                                                                                                                                          |
+| `traits`                   | passthrough-ish (every non-size/speed trait copied as `{name, description, level:1}`) **plus** per-race hardcoded "lineage" sub-parsers (5 races only: Elf/Dragonborn/Gnome/Goliath/Tiefling) that split one combined 2024 lineage-choice trait into synthetic standalone Subrace rows, each with its own bespoke markdown-table or prose parser | composed (every raw field with no dedicated column — `<ability>`, `<resist>`, `<vulnerable>`, `<conditionResist>`, `<conditionImmune>`, `<proficiency>`, `<weapons>`, `<tools>`, `<languages>` — synthesized into `traits[]` entries with a fixed label, **and** kept verbatim in `extraData.raw*` as a backup) |
+| `description`              | passthrough                                                                                                                                                                                                                                                                                                                                      | parsed (from a `"Description"`-named trait, citation-stripped; subrace descriptions additionally get a parent-paragraph-dedup pass, see §4)                                                                                                                                                                     |
+| `parentRaceId` (Race only) | always `null` — Open5e's 2024 lineage races have no separate parent record                                                                                                                                                                                                                                                                       | always `null` — Race is never itself a subrace                                                                                                                                                                                                                                                                  |
+| `raceId` (Subrace only)    | resolved in-process (2014/third-party path: real `is_subspecies:true` API record matched by `subspecies_of` key/name) **or** synthesized in-process (2024 path: no real parent lookup needed, the lineage option is derived from the same base-race record)                                                                                      | resolved via a **separate cross-source DB lookup after insert**, same pattern as Subclass→Class                                                                                                                                                                                                                 |
 
 ### ContentBackground
 
-| Column | Open5e method | Compendium method |
-|---|---|---|
-| `name` | passthrough | parsed (name-tag-stripped) |
-| `proficiencies` | parsed (per-`benefit.type` switch over `skill_proficiency`/`tool_proficiency` benefit prose → `parseProficiencyGrant()`, tagged `category: skill\|tool`) | parsed (`<proficiency>` element + a `"Tool Proficiency:"`-labeled `<trait>`, same `parseProficiencyGrant()` helper reused from Open5e's module) |
-| `abilityBonuses` | inferred (hardcoded "distribute 3 points across named abilities, max +2" rule — the actual 2024 SRD rule, not per-record data) | inferred (same hardcoded rule, triggered by an `"Ability Scores:"`-labeled `<trait>` instead of a typed benefit) |
-| `feature` | passthrough-ish (each `feature`-typed benefit → `{name, description}`) | parsed (any `<trait>` whose name matches `/feature:/i` or `/^talent:/i`) |
-| `description` | passthrough (`raw.desc`) | parsed (from a `"Description"`-named trait, citation-stripped) |
+| Column           | Open5e method                                                                                                                                            | Compendium method                                                                                                                               |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`           | passthrough                                                                                                                                              | parsed (name-tag-stripped)                                                                                                                      |
+| `proficiencies`  | parsed (per-`benefit.type` switch over `skill_proficiency`/`tool_proficiency` benefit prose → `parseProficiencyGrant()`, tagged `category: skill\|tool`) | parsed (`<proficiency>` element + a `"Tool Proficiency:"`-labeled `<trait>`, same `parseProficiencyGrant()` helper reused from Open5e's module) |
+| `abilityBonuses` | inferred (hardcoded "distribute 3 points across named abilities, max +2" rule — the actual 2024 SRD rule, not per-record data)                           | inferred (same hardcoded rule, triggered by an `"Ability Scores:"`-labeled `<trait>` instead of a typed benefit)                                |
+| `feature`        | passthrough-ish (each `feature`-typed benefit → `{name, description}`)                                                                                   | parsed (any `<trait>` whose name matches `/feature:/i` or `/^talent:/i`)                                                                        |
+| `description`    | passthrough (`raw.desc`)                                                                                                                                 | parsed (from a `"Description"`-named trait, citation-stripped)                                                                                  |
 
 ### ContentFeat / ContentClassOption / ContentCondition
 
@@ -536,11 +543,13 @@ option back to the class that grants it.
 Full detail and more examples live in `extradata-key-frequency-audit-combined.md`
 § per-table; summarized here for self-containedness.
 
-1. **`ContentMonster.damageResistances`/`damageImmunities`/`damageVulnerabilities`/`conditionImmunities`** — a real dedicated column, not extraData, and the two sources write incompatible array-element shapes to it *today*, in production:
+1. **`ContentMonster.damageResistances`/`damageImmunities`/`damageVulnerabilities`/`conditionImmunities`** — a real dedicated column, not extraData, and the two sources write incompatible array-element shapes to it _today_, in production:
+
    ```json
    // Open5e:      ["acid"]
    // Compendium:  [{"type":"radiant"}]  or  [{"types":["acid","cold","fire"],"nonmagical":true,"bypassedBy":"silvered weapons"}]
    ```
+
    Open5e's shape is flatter but lossy (no qualifier support at all — "resistant to bludgeoning/piercing/slashing from nonmagical attacks" can't be represented, only the bare type list). Compendium's is richer but never gets simplified back down even for the common single-type case... actually it does (`{type: "x"}` for the simple case, `{types: [...], nonmagical, bypassedBy}` only for compound cases) — see `shared/resistance.ts`. This is the single highest-priority shape decision, because it's already live on a real column both sources write to, not a hypothetical extraData promotion.
 
 2. **`ContentSpell` upcast/scaling data**: Open5e's `extraData.castingOptions` (`{type: "slot_level_N", damage_roll, target_count, duration, range, concentration, shape_size, desc}`, all nullable except `type`) vs. Compendium's `extraData.scalingDice` (`{dice, description, level}`, no room for range/duration/shape changes) are the same real-world fact with zero shared field names. A unified shape needs new design, not a pick-one-side decision.

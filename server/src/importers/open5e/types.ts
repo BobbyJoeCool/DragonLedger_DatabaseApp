@@ -14,6 +14,23 @@ export interface Open5eKeyName {
   name: string
 }
 
+// Real live shape (Phase 2.6): `type` uses two different prefixes for the
+// same field depending on what kind of scaling this is — `player_level_N`
+// for cantrip character-level scaling, `slot_level_N` for leveled-spell
+// upcasting — both suffixed with the trigger number. Every other field is
+// null in every sample checked (dragged along for schema-completeness by
+// the API, not because real data populates them).
+export interface Open5eCastingOption {
+  type: string
+  damage_roll: string | null
+  target_count: number | null
+  duration: string | null
+  range: string | null
+  concentration: boolean | null
+  shape_size: number | null
+  desc: string | null
+}
+
 export interface Open5eSpell {
   key: string
   name: string
@@ -32,7 +49,7 @@ export interface Open5eSpell {
   material_specified: string | null
   classes: Open5eKeyName[]
   document: Open5eDocument
-  casting_options: unknown[]
+  casting_options: Open5eCastingOption[]
   damage_roll: string | null
   damage_types: string[]
   saving_throw_ability: string | null
@@ -204,11 +221,20 @@ export interface Open5eCreatureTrait {
   desc: string
 }
 
+// Verified live (Phase 2.6): `_display` fields live nested here, not at the
+// top level of the creature — plain comma-joined prose (e.g. "cold, fire,
+// lightning"), empty string (not null) when the creature has none. Kept
+// alongside the flat key arrays as an `_display`-empty-but-array-non-empty
+// fallback source, not a replacement for them.
 export interface Open5eResistancesAndImmunities {
   damage_resistances: Open5eKeyName[]
+  damage_resistances_display: string
   damage_immunities: Open5eKeyName[]
+  damage_immunities_display: string
   damage_vulnerabilities: Open5eKeyName[]
+  damage_vulnerabilities_display: string
   condition_immunities: Open5eKeyName[]
+  condition_immunities_display: string
 }
 
 export interface Open5eCreature {

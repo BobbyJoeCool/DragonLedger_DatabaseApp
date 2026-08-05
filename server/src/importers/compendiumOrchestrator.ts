@@ -12,6 +12,7 @@ import type { ResolvedCompendiumSource } from './compendium/sourceBooks.js'
 import type { CompendiumDocument } from './compendium/types.js'
 import { parseCompendiumXml } from './compendium/xmlParser.js'
 import { importEvents } from './importEvents.js'
+import type { ExplodedClassFeature } from './shared/classFeature.js'
 
 export type DuplicateDecision = 'duplicate' | 'skip'
 
@@ -389,18 +390,22 @@ export async function importCompendium(options: ImportCompendiumOptions): Promis
     })
   }
 
-  // ---- Class / Subclass ----
+  // ---- Class / Subclass / ContentClassFeature ----
   try {
     const classRows: Prisma.ContentClassCreateManyInput[] = []
+    // Keyed by row object reference, not slug — dedupeSlugs mutates `.slug`
+    // in place on collision, so a reference key stays correct regardless.
+    const classFeaturesByRow = new Map<Prisma.ContentClassCreateManyInput, ExplodedClassFeature[]>()
     const pendingSubclasses: {
       row: Omit<Prisma.ContentSubclassCreateManyInput, 'classId'>
       source: ResolvedCompendiumSource
       parentClassName: string
+      features: ExplodedClassFeature[]
     }[] = []
     let skipped = 0
     for (const raw of c.class ?? []) {
       try {
-        const { classResult, subclasses } = transformCompendiumClass(raw)
+        const { classResult, classFeatures, subclasses } = transformCompendiumClass(raw)
         await ensureSource(classResult.source)
         const action = await resolveAction(
           prisma.contentClass,
@@ -412,7 +417,10 @@ export async function importCompendium(options: ImportCompendiumOptions): Promis
           'CLASS',
           pending,
         )
-        if (action === 'insert') classRows.push(classResult.row)
+        if (action === 'insert') {
+          classRows.push(classResult.row)
+          classFeaturesByRow.set(classResult.row, classFeatures)
+        }
         for (const sub of subclasses) {
           await ensureSource(sub.source)
           pendingSubclasses.push(sub)
@@ -433,10 +441,32 @@ export async function importCompendium(options: ImportCompendiumOptions): Promis
       totalInserted += classRows.length
     }
 
+    const classFeatureRows: Prisma.ContentClassFeatureCreateManyInput[] = []
+    if (classRows.length > 0) {
+      const insertedClasses = await prisma.contentClass.findMany({
+        where: { OR: classRows.map((r) => ({ sourceId: r.sourceId, slug: r.slug })) },
+        select: { id: true, sourceId: true, slug: true },
+      })
+      const classIdByKey = new Map(
+        insertedClasses.map((cl) => [`${cl.sourceId}::${cl.slug}`, cl.id]),
+      )
+      for (const row of classRows) {
+        const classId = classIdByKey.get(`${row.sourceId}::${row.slug}`)
+        if (!classId) continue
+        for (const f of classFeaturesByRow.get(row) ?? []) {
+          classFeatureRows.push({ classId, subclassId: null, ...f })
+        }
+      }
+    }
+
     // Cross-source parent resolution (Subclass): prefer an Open5e-sourced
     // ContentClass match by name, then a Compendium-sourced match, else
     // import with classId: null, flagged via extraData.unresolvedClassName.
     const subclassRows: Prisma.ContentSubclassCreateManyInput[] = []
+    const subclassFeaturesByRow = new Map<
+      Prisma.ContentSubclassCreateManyInput,
+      ExplodedClassFeature[]
+    >()
     for (const sub of pendingSubclasses) {
       const openMatch = await prisma.contentClass.findFirst({
         where: { name: sub.parentClassName, source: { type: 'API' } },
@@ -461,16 +491,41 @@ export async function importCompendium(options: ImportCompendiumOptions): Promis
         ? JSON.parse(sub.row.extraData)
         : {}
       if (!classId) extraData = { ...extraData, unresolvedClassName: sub.parentClassName }
-      subclassRows.push({ ...sub.row, classId, extraData: JSON.stringify(extraData) })
+      const subclassRow = { ...sub.row, classId, extraData: JSON.stringify(extraData) }
+      subclassRows.push(subclassRow)
+      subclassFeaturesByRow.set(subclassRow, sub.features)
     }
     if (subclassRows.length > 0) {
       await prisma.contentSubclass.createMany({ data: dedupeSlugs(subclassRows) })
       totalInserted += subclassRows.length
     }
+
+    if (subclassRows.length > 0) {
+      const insertedSubclasses = await prisma.contentSubclass.findMany({
+        where: { OR: subclassRows.map((r) => ({ sourceId: r.sourceId, slug: r.slug })) },
+        select: { id: true, sourceId: true, slug: true },
+      })
+      const subclassIdByKey = new Map(
+        insertedSubclasses.map((s) => [`${s.sourceId}::${s.slug}`, s.id]),
+      )
+      for (const row of subclassRows) {
+        const subclassId = subclassIdByKey.get(`${row.sourceId}::${row.slug}`)
+        if (!subclassId) continue
+        for (const f of subclassFeaturesByRow.get(row) ?? []) {
+          classFeatureRows.push({ classId: null, subclassId, ...f })
+        }
+      }
+    }
+
+    if (classFeatureRows.length > 0) {
+      await prisma.contentClassFeature.createMany({ data: classFeatureRows })
+      totalInserted += classFeatureRows.length
+    }
+
     importEvents.emitProgress(jobId, {
       type: 'CLASS',
       status: 'done',
-      count: classRows.length + subclassRows.length,
+      count: classRows.length + subclassRows.length + classFeatureRows.length,
     })
   } catch (err) {
     errors.push({ contentType: 'CLASS', message: (err as Error).message })

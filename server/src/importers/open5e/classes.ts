@@ -1,5 +1,6 @@
 import type { Prisma } from '@prisma/client'
 import { ClassSchema, SubclassSchema } from '../../schemas/content/class.js'
+import type { ExplodedClassFeature } from '../shared/classFeature.js'
 import { toJsonString } from '../utils/json.js'
 import { ABILITY_NAME_TO_CODE } from './abilities.js'
 import { parseProficiencyGrant, splitOptionList } from './proseGrant.js'
@@ -112,21 +113,31 @@ function inferHitDie(raw: Open5eClass, coreTraits: Record<string, string>): numb
   return HIT_DIE_FALLBACK[raw.name] ?? 8
 }
 
-function extraFeatures(features: Open5eFeature[]) {
-  return features
-    .filter((f) => f.feature_type !== 'CORE_TRAITS_TABLE')
-    .map((f) => ({
-      name: f.name,
-      description: f.desc,
-      type: f.feature_type,
-      levels: f.gained_at.map((g) => g.level),
-    }))
+// Phase 2.6: explodes each grouped {levels: [4,8,12,16]} entry into one row
+// per level, matching Compendium's native one-row-per-<autolevel> shape —
+// see shared/classFeature.ts.
+function explodeFeatures(features: Open5eFeature[]): ExplodedClassFeature[] {
+  const out: ExplodedClassFeature[] = []
+  for (const f of features) {
+    if (f.feature_type === 'CORE_TRAITS_TABLE') continue
+    for (const g of f.gained_at) {
+      out.push({ level: g.level, name: f.name, description: f.desc, type: f.feature_type })
+    }
+  }
+  return out
 }
 
-export function transformClass(
-  raw: Open5eClass,
-  sourceId: string,
-): Prisma.ContentClassCreateManyInput {
+export interface TransformedClass {
+  row: Prisma.ContentClassCreateManyInput
+  features: ExplodedClassFeature[]
+}
+
+export interface TransformedSubclass {
+  row: Prisma.ContentSubclassCreateManyInput
+  features: ExplodedClassFeature[]
+}
+
+export function transformClass(raw: Open5eClass, sourceId: string): TransformedClass {
   const documentKey = raw.document.key
   const coreTraits = parseCoreTraitsTable(raw.features)
 
@@ -165,22 +176,25 @@ export function transformClass(
     skillChoices,
     spellcastingAbility: lookupSpellcastingAbility(raw.name, raw.caster_type),
     description: raw.desc || '',
-    extraData: { casterType: raw.caster_type, features: extraFeatures(raw.features) },
+    extraData: { casterType: raw.caster_type },
   })
 
   return {
-    slug: logical.slug,
-    sourceId: logical.sourceId,
-    name: logical.name,
-    hitDie: logical.hitDie,
-    primaryAbility: toJsonString(logical.primaryAbility) as string,
-    savingThrows: toJsonString(logical.savingThrows) as string,
-    armorProfs: toJsonString(logical.armorProfs) as string,
-    weaponProfs: toJsonString(logical.weaponProfs) as string,
-    skillChoices: toJsonString(logical.skillChoices) as string,
-    spellcastingAbility: logical.spellcastingAbility ?? null,
-    description: logical.description,
-    extraData: toJsonString(logical.extraData),
+    row: {
+      slug: logical.slug,
+      sourceId: logical.sourceId,
+      name: logical.name,
+      hitDie: logical.hitDie,
+      primaryAbility: toJsonString(logical.primaryAbility) as string,
+      savingThrows: toJsonString(logical.savingThrows) as string,
+      armorProfs: toJsonString(logical.armorProfs) as string,
+      weaponProfs: toJsonString(logical.weaponProfs) as string,
+      skillChoices: toJsonString(logical.skillChoices) as string,
+      spellcastingAbility: logical.spellcastingAbility ?? null,
+      description: logical.description,
+      extraData: toJsonString(logical.extraData),
+    },
+    features: explodeFeatures(raw.features),
   }
 }
 
@@ -188,7 +202,7 @@ export function transformSubclass(
   raw: Open5eClass,
   classId: string | null,
   sourceId: string,
-): Prisma.ContentSubclassCreateManyInput {
+): TransformedSubclass {
   const documentKey = raw.document.key
 
   const logical = SubclassSchema.parse({
@@ -197,15 +211,18 @@ export function transformSubclass(
     classId,
     name: raw.name,
     description: raw.desc || '',
-    extraData: { features: extraFeatures(raw.features) },
+    extraData: null,
   })
 
   return {
-    slug: logical.slug,
-    sourceId: logical.sourceId,
-    classId: logical.classId ?? null,
-    name: logical.name,
-    description: logical.description,
-    extraData: toJsonString(logical.extraData),
+    row: {
+      slug: logical.slug,
+      sourceId: logical.sourceId,
+      classId: logical.classId ?? null,
+      name: logical.name,
+      description: logical.description,
+      extraData: toJsonString(logical.extraData),
+    },
+    features: explodeFeatures(raw.features),
   }
 }
