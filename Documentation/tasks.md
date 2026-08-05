@@ -92,12 +92,12 @@ outline.md's Open Questions appendix — resolve that first rather than guessing
          `composeAttackDice`, `inferProficiencyBonus`, `parseSpellcastingBlock`
 4. [x] `server/src/importers/utils/fetchWithRetry.ts` — 3 attempts, 500ms base
        exponential backoff, honor `Retry-After` on 429
-5. [x] `server/src/importers/orchestrator.ts` — `importSource({ sourceId, sourceName,
-       documentKey?, contentTypes, jobId })`: upsert Source → per-content-type
+5. [x] `server/src/importers/orchestrator.ts` — `importSource(options)` (sourceId,
+       sourceName, optional documentKey, contentTypes, jobId): upsert Source → per-content-type
        transaction (delete existing rows for sourceId, fetch+transform+chunk+`createMany`)
        → update `ImportJob` progress/status per type → update `Source.lastUpdated` on
        completion. Validation (Zod `.parse()`) happens during the fetch+transform step,
-       *before* the transaction opens — a bad record fails fast without ever touching
+       _before_ the transaction opens — a bad record fails fast without ever touching
        existing DB rows for that type, which satisfies the rollback-isolation goal more
        simply than a delete-then-reinsert-then-rollback transaction would.
    - [x] **Chunk size recalculated**, not just re-verified: `computeChunkSize(columnCount)`
@@ -142,81 +142,80 @@ outline.md's Open Questions appendix — resolve that first rather than guessing
 
 ## Phase 2.5 — Compendium Import
 
-1. [ ] Add `ContentFeat`, `ContentClassOption`, `Language` models +
-       `ImportJobStatus.AWAITING_CONFIRMATION` to schema; migrate
-       (skip if already done in Phase 1/2)
-2. [ ] Build the real XML parsing layer first — every mapping below depends on it
-3. [ ] Build `COMPENDIUM_TO_OPEN5E_SOURCE` lookup table — real research task:
-       cross-reference Compendium book titles against Open5e's `document.key` values
-4. [ ] Build the shared composite resistance/immunity/vulnerability parser
-       (recognizes "B/P/S from nonmagical, unless silvered"-shaped phrases as
-       one atomic entry) as a standalone utility — used by **both** Open5e and
-       Compendium Monster importers, not duplicated
-5. [ ] Build the shared telepathy-range extractor (parses `"telepathy X ft."`
-       out of free language text) — same both-sources reuse
-6. [ ] Implement content types in this order:
-   - [ ] Feat & Spell first — establishes citation-parsing and suffix-stripping
-         utilities other types reuse. Watch for the Maneuver-reroute case
-         (`<classes>` = "Maneuver Options" → `ContentClassOption`, not `ContentSpell`)
-   - [ ] Item — best-effort rarity/attunement text parsing, flag as unreliable
-   - [ ] Background — **6-record sample only**; implement conservatively, log
-         unrecognized traits to `extraData.unrecognizedTraits` liberally; handle
-         the tag-vs-bullet disagreement case (`extraData.proficiencyMismatch`)
-   - [ ] Monster — reuses the Section-3-equivalent shared parsers from step 4/5
-   - [ ] **🚩 BLOCKING PREREQUISITE — do this before writing Class/Subclass or
-         Race/Subrace at all:** confirmed by the project owner that the
-         current design has only been checked against **one class file**
-         (Cleric 2024) and **two race files** (Elf/Wood Elf, Dwarf). Pull a
-         much larger real sample first — multiple classes across both 2014
-         and 2024 editions, multiple race families with real subraces, at
-         least one genuine third-party/homebrew example of each — and
-         manually re-verify the parenthetical-suffix subclass rule and the
-         comma-separated subrace-naming convention against it. This is a
-         required step, not optional polish to do "later."
-   - [ ] Class/Subclass (hardest) — implement the parenthetical-suffix
-         subclass-detection rule defensively even after the broader sample
-         above; log every subclass-routing decision so real output can be
-         spot-checked; handle per-feature (not per-record) edition tagging;
-         don't misroute colon-style in-base-class choices (e.g. "Divine
-         Order: Protector") as subclasses
-   - [ ] Race/Subrace — comma-separated `"ParentRace, SubraceName"` detection;
-         subraces import as complete standalone records (no lineage synthesis
-         needed here, unlike Open5e); implement the safeguarded description-
-         stripping mechanism (paragraph-match against parent, skip stripping
-         entirely on low confidence or missing parent, set
-         `extraData.descriptionStrippingSkipped` when skipped)
-     - [ ] **RESOLVED:** `<ability>`/`<resist>`/`<vulnerable>`/`<conditionResist>`/
-           `<conditionImmune>`/`<proficiency>`/`<weapons>`/`<tools>`/`<languages>`
-           (no dedicated `ContentRace`/`ContentSubrace` column for any of
-           these) — synthesize each into a `traits[]` entry, **and** also
-           store the original raw value in `extraData` (e.g.
-           `extraData.rawAbility`) as a backup/cross-check
-7. [ ] Implement cross-source parent resolution for Compendium-derived
-       Subclass/Subrace: prefer Open5e-sourced match → Compendium-sourced match
-       → `null` + `extraData.unresolvedClassName`/`unresolvedRaceName`
-8. [ ] Implement the two-layer duplicate-resolution/re-import-safety check as a
-       **distinct code path** from Open5e's `importSource` (same-source+slug →
-       skip unconditionally; cross-source via lookup table → `AWAITING_CONFIRMATION`
-       batch prompt; neither → import fresh)
-9. [ ] Seed the `Language` table (if not already done in Phase 1)
-10. [ ] **RESOLVED — build the book-priority ranking:** when a record cites
-        multiple source books, resolve to whichever cited source has the
-        higher priority (rule is settled; the ranking data isn't built yet).
-        Define this as either a `priority: Int` field on `Source`, or a
-        hardcoded ranking table alongside `COMPENDIUM_TO_OPEN5E_SOURCE` — a
-        real research/data task (which books outrank which), not a design
-        question. Needed before any citation-parsing logic can fully resolve a
-        multi-book record.
-11. [ ] Wire the `AWAITING_CONFIRMATION` flow into the same import orchestrator
-        as an early phase before any writes begin
-12. [ ] **Do not skip verification before a full production import** (the
-        Class/Subclass and Race/Subrace sample-size check is now a blocking
-        prerequisite in step 6 above, not listed again here):
-    - [ ] **[VERIFY]** Feat's `GENERAL` category default for unprefixed names
-    - [ ] **[VERIFY]** Item rarity/attunement text-parsing reliability
-13. [ ] Write Phase 2.5 tests (re-import never overwrites an edited row;
-        `AWAITING_CONFIRMATION` triggers and respects batch choice; parent
-        resolution prefers Open5e; composite resistance parser output shape)
+1. [x] `ContentFeat`, `ContentClassOption`, `Language` models + `ImportJobStatus.AWAITING_CONFIRMATION`
+       — already fully present from Phase 1's schema build; no new migration needed
+2. [x] Real XML parsing layer built first (`fast-xml-parser`, not string-splitting) — every
+       transform depends on it
+3. [x] `COMPENDIUM_TO_OPEN5E_SOURCE` lookup table built from real citation data (~140
+       distinct cited books surveyed) — only SRD core books plus Tal'Dorei Campaign
+       Setting: Reborn and Creature Codex have any real Open5e mapping; everything else
+       (Xanathar's, Tasha's, Eberron books, Critical Role modules, all homebrew/TP/UA
+       content) correctly has none
+4. [x] Shared composite resistance/immunity/vulnerability parser built as a standalone
+       utility (`server/src/importers/shared/resistance.ts`) — used by the Compendium
+       Monster importer. **Not yet retrofitted onto Open5e's monster transform** as the
+       doc also asks for — deliberately deferred (see phase-2.5 dev log); `ContentMonster`'s
+       resistance columns intentionally hold two valid shapes depending on source today
+5. [x] Shared telepathy-range extractor built (`server/src/importers/shared/telepathy.ts`)
+6. [x] Content types implemented, in the specified order, with real corrections found at
+       every step (full list in `DevTools/Claude/phase-2.5.md` — too long to duplicate here):
+   - [x] Feat & Spell — Maneuver-reroute case implemented, plus real pool types beyond
+         Maneuver/Metamagic (Arcane Shot, Channeling, Psionic Discipline, Eldritch
+         Invocation — the last uses a completely different `<classes>` shape with no
+         "Options" suffix at all)
+   - [x] Item — rarity/attunement turned out to have a dedicated, reliable `<detail>` tag
+         (confirmed on 98.7% of 5,317 magic items) — **not** best-effort text parsing as
+         the doc assumed
+   - [x] Background — re-verified against the full 223-record set, not just 6. Real shape
+         is simpler than documented (colon-labeled `<trait>` elements, not prose bullets)
+   - [x] Monster — reuses the shared resistance/telepathy parsers from steps 4/5
+   - [x] **Blocking prerequisite resolved**: verified against the full real file (25
+         classes, 273 races) rather than 1 class / 2 race files. Found the documented
+         parenthetical-suffix subclass rule produces false positives and replaced it with
+         a marker-feature-based rule (see dev log) — a materially different mechanism,
+         not a refinement of the original
+   - [x] Class/Subclass — marker-feature detection (`"<Class> Subclass: <Name>"`)
+         implemented defensively (per-subclass try/catch — real source data has several
+         genuinely blank markers); per-feature edition tagging handled; colon-style
+         in-base-class choices (e.g. "Divine Order: Protector") correctly not misrouted
+   - [x] Race/Subrace — **strict comma-only** parent-linking (scope decision, confirmed
+         with the user given real data has an equally-common undocumented parenthetical
+         campaign-setting pattern the docs never anticipated); subraces import as complete
+         standalone records; safeguarded description-stripping implemented exactly as
+         specified (`extraData.descriptionStrippingSkipped` when skipped)
+     - [x] Un-columned race fields (`<ability>`/`<resist>`/etc.) synthesized into
+           `traits[]` _and_ preserved raw in `extraData`, per the outline's resolution
+7. [x] Cross-source parent resolution implemented for Subclass **and** Subrace — prefer
+       Open5e-sourced match → Compendium-sourced match → `null` + `extraData.unresolvedClassName`/
+       `unresolvedRaceName`. All 382 real subclasses resolved successfully in the live import.
+8. [x] Two-layer duplicate-resolution/re-import-safety check implemented as a distinct
+       orchestrator (`compendiumOrchestrator.ts`, not a branch on Open5e's `importSource`)
+9. [x] `Language` table already seeded in Phase 1
+10. [x] Multi-book citation handling resolved by scope decision (confirmed with the
+        user): first-listed book only for `sourceId`; the rest preserved raw in
+        `extraData.additionalCitations`, never used for priority ranking. Real multi-book
+        citations are genuinely rare (12 of 8,033, ~0.15%) — a full priority-ranking table
+        was not needed for this scope.
+11. [x] `AWAITING_CONFIRMATION` flow wired as a real two-phase mechanism: the initial
+        request pauses the job and writes nothing for the matched records; a separate
+        `POST /api/import/compendium/:jobId/resume` completes it once a decision is given
+12. [x] Verification completed against the full real file, not deferred:
+    - [x] **[VERIFIED]** Feat's `GENERAL` category default for unprefixed names — 461 of
+          580 real feats are unprefixed, confirming the default; real prefixes go well
+          beyond Origin/Fighting Style/Epic Boon (Dragonmark, Path of the Lich, etc.),
+          routed to `CLASS_SPECIFIC` with the raw prefix preserved
+    - [x] **[VERIFIED]** Item rarity/attunement — reliable via `<detail>`, see step 6
+13. [x] Phase 2.5 tests written: `server/src/__tests__/compendium/*.test.ts` (34 tests
+        against real captured fixtures) covering name-tag stripping, citation extraction,
+        source-book resolution, the composite resistance parser, and every content-type
+        transform's novel mechanism, plus a mocked-file orchestrator suite covering
+        additive-only re-import (never overwrites a locally-edited row),
+        `AWAITING_CONFIRMATION` triggering and resuming, and cross-source parent
+        preference. **Beyond the original scope:** a full real (non-mocked) import
+        against the live 32MB Compendium file was run end-to-end (multiple times, fixing
+        real bugs found along the way) and spot-checked by hand — final state: 580 feats,
+        1,004 spells, 126 class options, 5,967 items, 223 backgrounds, 4,847 monsters, 25
+        classes, 382/382 subclasses correctly parent-resolved, 131 races, 166 subraces.
 
 ---
 
@@ -301,7 +300,7 @@ outline.md's Open Questions appendix — resolve that first rather than guessing
 - [ ] Source list (`/sources`) — table, actions (Re-import, Delete, **Clear
       entries** wired to Phase 4's bulk-clear endpoint), "Add Source" dialog
 - [ ] Import wizard Step 1 — **three** import-type options: Open5e API,
-      Compendium XML *(new)*, JSON file
+      Compendium XML _(new)_, JSON file
 - [ ] Import wizard Step 2b (Compendium) — file picker + the
       `AWAITING_CONFIRMATION` duplicate-summary step before the real import runs
 - [ ] Progress view — per-content-type progress, live counts, error list
@@ -334,12 +333,12 @@ outline.md's Open Questions appendix — resolve that first rather than guessing
 
 ---
 
-## Phase 8 — Desktop Packaging (Electron) — *moved to Phase 0.7, see above*
+## Phase 8 — Desktop Packaging (Electron) — _moved to Phase 0.7, see above_
 
 **RESOLVED:** this was moved up front per decision — build it right after
 Phase 0, not deferred to the end. The task list now lives under **Phase 0.7**
 near the top of this document. Only two items remained genuinely tied to
-*later* phases (they need Phases 2.5/5–7 to exist first) and are listed here
+_later_ phases (they need Phases 2.5/5–7 to exist first) and are listed here
 for reference:
 
 - [ ] Document the "back up your `userData` DB file before installing an
