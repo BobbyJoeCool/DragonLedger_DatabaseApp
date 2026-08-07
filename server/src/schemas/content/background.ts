@@ -33,4 +33,15 @@ export const BackgroundSchema = z.object({
 
 export const BackgroundPartialSchema = BackgroundSchema.partial()
 
+// Correctable subset: proficiencies/abilityBonuses are parsed from free
+// prose bullet points ("Choose one kind of Gaming Set") into the Fixed/Choice
+// Grant Shape — a real, known gap area (extraData.proficiencyMismatch exists
+// for exactly this reason). feature[] is mostly empty on 2024-style
+// backgrounds and, when populated, is a direct {name,description} copy, not
+// an inference.
+export const BackgroundCorrectableSchema = BackgroundSchema.pick({
+  proficiencies: true,
+  abilityBonuses: true,
+}).strict()
+
 export type Background = z.infer<typeof BackgroundSchema>

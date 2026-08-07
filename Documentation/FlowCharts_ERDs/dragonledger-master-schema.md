@@ -61,6 +61,9 @@ model ImportJob {
   totalItems     Int?
   processedItems Int             @default(0)
   errorLog       String?         // JSON array of { contentType, message }
+  warnings       String?         // JSON array of { type, id, name, formerParentId } — Phase 4:
+                                  // non-fatal FYI (e.g. a homebrew subclass orphaned by a refresh),
+                                  // distinct from errorLog's real per-content-type failures
   startedAt      DateTime        @default(now())
   completedAt    DateTime?
 }

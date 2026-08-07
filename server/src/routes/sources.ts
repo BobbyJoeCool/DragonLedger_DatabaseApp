@@ -2,6 +2,8 @@ import { Router } from 'express'
 import { prisma } from '../db/client.js'
 import { requireAuth } from '../middleware/auth.js'
 import { slugify } from '../utils/slugify.js'
+import { errorResponse } from '../utils/errorResponse.js'
+import { clearContentForSource, findOrphanWarnings } from '../utils/sourceContent.js'
 
 export const sourcesRouter = Router()
 
@@ -109,68 +111,7 @@ sourcesRouter.delete('/:id', requireAuth, async (req, res) => {
   }
 
   const warnings = await prisma.$transaction(async (tx) => {
-    const messages: string[] = []
-
-    const classIds = (
-      await tx.contentClass.findMany({ where: { sourceId: id }, select: { id: true } })
-    ).map((c) => c.id)
-    const raceIds = (
-      await tx.contentRace.findMany({ where: { sourceId: id }, select: { id: true } })
-    ).map((r) => r.id)
-
-    if (classIds.length > 0) {
-      const orphanedSubclasses = await tx.contentSubclass.findMany({
-        where: { classId: { in: classIds }, sourceId: { not: id } },
-        select: { name: true, sourceId: true },
-      })
-      for (const s of orphanedSubclasses) {
-        messages.push(
-          `Subclass "${s.name}" (source: ${s.sourceId}) lost its parent class and is now unlinked`,
-        )
-      }
-
-      const orphanedClassOptions = await tx.contentClassOption.findMany({
-        where: { classId: { in: classIds }, sourceId: { not: id } },
-        select: { name: true, sourceId: true },
-      })
-      for (const o of orphanedClassOptions) {
-        messages.push(
-          `Class option "${o.name}" (source: ${o.sourceId}) lost its parent class and is now unlinked`,
-        )
-      }
-    }
-
-    if (raceIds.length > 0) {
-      const orphanedSubraces = await tx.contentSubrace.findMany({
-        where: { raceId: { in: raceIds }, sourceId: { not: id } },
-        select: { name: true, sourceId: true },
-      })
-      for (const s of orphanedSubraces) {
-        messages.push(
-          `Subrace "${s.name}" (source: ${s.sourceId}) lost its parent race and is now unlinked`,
-        )
-      }
-
-      // ContentRace.parentRaceId is onDelete: NoAction — unlike the SetNull
-      // relations above, SQLite won't clear this automatically, and a
-      // cross-source child left pointing at a row about to be deleted would
-      // make the delete below fail with a foreign key constraint error.
-      const orphanedSubspecies = await tx.contentRace.findMany({
-        where: { parentRaceId: { in: raceIds }, sourceId: { not: id } },
-        select: { id: true, name: true, sourceId: true },
-      })
-      if (orphanedSubspecies.length > 0) {
-        await tx.contentRace.updateMany({
-          where: { id: { in: orphanedSubspecies.map((r) => r.id) } },
-          data: { parentRaceId: null },
-        })
-        for (const r of orphanedSubspecies) {
-          messages.push(
-            `Race "${r.name}" (source: ${r.sourceId}) lost its parent race and is now unlinked`,
-          )
-        }
-      }
-    }
+    const messages = await findOrphanWarnings(tx, id)
 
     // ImportJob.sourceId is onDelete: RESTRICT — a source's job history
     // doesn't outlive the source itself.
@@ -182,4 +123,38 @@ sourcesRouter.delete('/:id', requireAuth, async (req, res) => {
   })
 
   res.json({ warnings })
+})
+
+// DELETE /api/sources/:id/entries — bulk-clear every content row for a
+// source, leaving the Source row itself intact. The delete half of a
+// refresh, without the re-import step (Phase 4 §1.8). Heavier confirmation
+// than a single-entry delete (exact-name match), proportional to blast radius.
+sourcesRouter.delete('/:id/entries', requireAuth, async (req, res) => {
+  const id = req.params.id as string
+  const { confirmName } = req.body as { confirmName?: unknown }
+
+  const source = await prisma.source.findUnique({ where: { id } })
+  if (!source) {
+    res.status(404).json(errorResponse('NOT_FOUND', 'Source not found'))
+    return
+  }
+  if (typeof confirmName !== 'string' || confirmName !== source.name) {
+    res
+      .status(400)
+      .json(
+        errorResponse(
+          'CONFIRM_NAME_MISMATCH',
+          '`confirmName` must exactly match the source\'s name',
+        ),
+      )
+    return
+  }
+
+  const { deletedCount, warnings } = await prisma.$transaction(async (tx) => {
+    const warnings = await findOrphanWarnings(tx, id)
+    const deletedCount = await clearContentForSource(tx, id)
+    return { deletedCount, warnings }
+  })
+
+  res.json({ deletedCount, warnings })
 })

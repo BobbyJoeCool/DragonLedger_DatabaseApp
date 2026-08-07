@@ -1,11 +1,27 @@
 import { Router } from 'express'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '../../db/client.js'
+import { requireAuth } from '../../middleware/auth.js'
+import {
+  ClassOptionCorrectableSchema,
+  ClassOptionPartialSchema,
+  ClassOptionSchema,
+} from '../../schemas/content/classOption.js'
 import { envelope, parseJsonFields, parseListQuery } from './shared.js'
+import { createPatchHandler, createPostHandler, createSimpleDeleteHandler } from './writeHandlers.js'
 
 export const classOptionsRouter = Router()
 
 const JSON_FIELDS = ['extraData'] as const
+
+const writeConfig = {
+  delegate: prisma.contentClassOption,
+  schema: ClassOptionSchema,
+  partialSchema: ClassOptionPartialSchema,
+  correctableSchema: ClassOptionCorrectableSchema,
+  jsonFields: JSON_FIELDS,
+  label: 'Class option',
+}
 
 // GET /api/class-options — Metamagic / Eldritch Invocations / Maneuvers.
 // filters: classId, pool, source, q. Given its own endpoint (not nested
@@ -48,3 +64,14 @@ classOptionsRouter.get('/:id', async (req, res) => {
   }
   res.json(parseJsonFields(classOption, JSON_FIELDS))
 })
+
+// POST /api/class-options (auth)
+classOptionsRouter.post('/', requireAuth, createPostHandler(writeConfig))
+
+// PATCH /api/class-options/:id (auth)
+classOptionsRouter.patch('/:id', requireAuth, createPatchHandler(writeConfig))
+
+// DELETE /api/class-options/:id (auth) — nothing references a ClassOption
+// itself (it's the dependent, not the parent — see Class's delete handler
+// for the reconciliation note), simple confirm+delete
+classOptionsRouter.delete('/:id', requireAuth, createSimpleDeleteHandler(writeConfig))

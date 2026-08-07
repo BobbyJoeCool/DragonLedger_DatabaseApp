@@ -1,11 +1,23 @@
 import { Router } from 'express'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '../../db/client.js'
+import { requireAuth } from '../../middleware/auth.js'
+import { SpellCorrectableSchema, SpellPartialSchema, SpellSchema } from '../../schemas/content/spell.js'
 import { envelope, parseJsonFields, parseListQuery } from './shared.js'
+import { createPatchHandler, createPostHandler, createSimpleDeleteHandler } from './writeHandlers.js'
 
 export const spellsRouter = Router()
 
 const JSON_FIELDS = ['classes', 'extraData'] as const
+
+const writeConfig = {
+  delegate: prisma.contentSpell,
+  schema: SpellSchema,
+  partialSchema: SpellPartialSchema,
+  correctableSchema: SpellCorrectableSchema,
+  jsonFields: JSON_FIELDS,
+  label: 'Spell',
+}
 
 // GET /api/spells — filters: source, q, level, school, class
 spellsRouter.get('/', async (req, res) => {
@@ -53,3 +65,12 @@ spellsRouter.get('/:id', async (req, res) => {
   }
   res.json(parseJsonFields(spell, JSON_FIELDS))
 })
+
+// POST /api/spells (auth)
+spellsRouter.post('/', requireAuth, createPostHandler(writeConfig))
+
+// PATCH /api/spells/:id (auth)
+spellsRouter.patch('/:id', requireAuth, createPatchHandler(writeConfig))
+
+// DELETE /api/spells/:id (auth) — no dependents, simple confirm+delete
+spellsRouter.delete('/:id', requireAuth, createSimpleDeleteHandler(writeConfig))

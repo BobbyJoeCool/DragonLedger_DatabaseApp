@@ -1,11 +1,23 @@
 import { Router } from 'express'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '../../db/client.js'
+import { requireAuth } from '../../middleware/auth.js'
+import { FeatCorrectableSchema, FeatPartialSchema, FeatSchema } from '../../schemas/content/feat.js'
 import { envelope, parseJsonFields, parseListQuery } from './shared.js'
+import { createPatchHandler, createPostHandler, createSimpleDeleteHandler } from './writeHandlers.js'
 
 export const featsRouter = Router()
 
 const JSON_FIELDS = ['extraData'] as const
+
+const writeConfig = {
+  delegate: prisma.contentFeat,
+  schema: FeatSchema,
+  partialSchema: FeatPartialSchema,
+  correctableSchema: FeatCorrectableSchema,
+  jsonFields: JSON_FIELDS,
+  label: 'Feat',
+}
 
 // GET /api/feats — filters: category, source, q
 featsRouter.get('/', async (req, res) => {
@@ -44,3 +56,12 @@ featsRouter.get('/:id', async (req, res) => {
   }
   res.json(parseJsonFields(feat, JSON_FIELDS))
 })
+
+// POST /api/feats (auth)
+featsRouter.post('/', requireAuth, createPostHandler(writeConfig))
+
+// PATCH /api/feats/:id (auth)
+featsRouter.patch('/:id', requireAuth, createPatchHandler(writeConfig))
+
+// DELETE /api/feats/:id (auth) — no dependents, simple confirm+delete
+featsRouter.delete('/:id', requireAuth, createSimpleDeleteHandler(writeConfig))

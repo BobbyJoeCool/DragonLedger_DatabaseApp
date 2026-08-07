@@ -28,6 +28,14 @@ export const RaceSchema = z.object({
 
 export const RacePartialSchema = RaceSchema.partial()
 
+// Correctable subset: parentRaceId is resolved by slug/name lookup against
+// other Race rows for real 2014-style subspecies — a genuine parser
+// inference. size/speed/traits are largely a direct structural transcription
+// of source content, not an inference; description is raw prose.
+export const RaceCorrectableSchema = RaceSchema.pick({
+  parentRaceId: true,
+}).strict()
+
 export const SubraceSchema = z.object({
   slug: z.string().min(1),
   sourceId: z.string().min(1),
@@ -41,6 +49,12 @@ export const SubraceSchema = z.object({
 })
 
 export const SubracePartialSchema = SubraceSchema.partial()
+
+// Correctable subset: raceId is resolved the same way as Subclass.classId
+// (cross-source parent matching, extraData.unresolvedRaceName on failure).
+export const SubraceCorrectableSchema = SubraceSchema.pick({
+  raceId: true,
+}).strict()
 
 export type Race = z.infer<typeof RaceSchema>
 export type Subrace = z.infer<typeof SubraceSchema>

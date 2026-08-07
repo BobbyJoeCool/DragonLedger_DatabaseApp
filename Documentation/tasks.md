@@ -353,34 +353,78 @@ outline.md's Open Questions appendix — resolve that first rather than guessing
 
 ## Phase 4 — Write API
 
-1. [ ] Add schema changes: `ContentSubclass.classId`/`ContentSubrace.raceId`
-       nullable + `onDelete: SetNull` (if not already applied in Phase 1); migrate
-2. [ ] Add/confirm the `homebrew` Source seed
-3. [ ] Extend each content type's Zod schema file with a third export:
-       `<Type>CorrectableSchema` (`.pick().strict()`) — **decide the real field
-       list per type as part of this step, don't copy Monster's list blindly**.
-       Monster's list is the only one defined so far (savingThrows, skills,
-       damageResistances, damageImmunities, damageVulnerabilities, conditionImmunities)
-4. [ ] Build shared error envelope helper (`server/src/utils/errorResponse.ts`)
-       — `{ error: { code, message } }` — use for every error path in this phase
-5. [ ] Implement `POST /api/:type` (400 `SOURCE_NOT_MANUAL`, 409 `SLUG_CONFLICT`, 400 `VALIDATION_ERROR`)
-6. [ ] Implement `PATCH /api/:type/:id` — Correctable-Fields check first, then
-       fall through to the `saveAs` flow (`SAVE_AS_REQUIRED`, `original`, `homebrew`)
-7. [ ] Implement `DELETE /api/:type/:id` — class/race dependent pre-check branch;
-       join the dependent-lookup query through **both** `ContentSubclass` and
-       `ContentClassOption` (same dependency shape, per the reconciliation note)
-       to split `willDelete` (non-MANUAL) vs. `willOrphan` (MANUAL)
-8. [ ] Implement `DELETE /api/sources/:id/entries` (bulk-clear) — reuse Phase 2's
-       delete-all-content-for-sourceId logic; `confirmName` gate
-9. [ ] Update `DELETE /api/sources/:id` to include the post-delete `warnings` array
-10. [ ] Update Phase 2's `importSource` orchestrator to run a post-refresh orphan
-        check (any subclass/subrace/classOption with a `null` parent) and attach to `ImportJob.warnings`
-11. [ ] Update `dragonledger-master-schema.md` if any nullable-FK details drift during implementation
-12. [ ] End-to-end verify before considering Phase 4 complete: delete an
-        official class with both an official and homebrew subclass attached →
-        official subclass gone, homebrew subclass `null`-parented and listed,
-        subsequent refresh of that class's source doesn't error
-13. [ ] Write Phase 4 tests per outline §4.8
+> Full rationale and every resolved decision: `DevTools/Claude/phase-4.md`.
+
+1. [x] **Already applied from Phase 1's schema build** — `ContentSubclass.classId`/
+       `ContentSubrace.raceId` were already nullable with `onDelete: SetNull` in
+       the very first migration; no new migration needed for this item.
+2. [x] **Already seeded from Phase 1** — the `homebrew` Source row exists and
+       is exercised by every write test.
+3. [x] Extended each content type's Zod schema file with `<Type>CorrectableSchema`.
+       **Real per-type field list decided** (drafted against the design doc's
+       own criterion — parser-inferred/derived = correctable, raw prose or
+       direct source copies = not — and confirmed with the user before
+       writing any schema code): Spell/Condition none (their real inferred
+       content lives inside `extraData`, deferred); Class: hitDie,
+       primaryAbility, savingThrows, armorProfs, weaponProfs, skillChoices,
+       spellcastingAbility; Subclass/Subrace/Race/ClassOption: their
+       cross-source-resolved parent-link field (classId/raceId/parentRaceId);
+       Background: proficiencies, abilityBonuses; Item: rarity,
+       requiresAttunement, damage, properties; Feat: category; Monster: the
+       design doc's original 6 fields (not actually in the file until now —
+       only ever existed in the doc's worked example).
+4. [x] Built `server/src/utils/errorResponse.ts` — `{ error: { code, message, ...extra } }`
+5. [x] Implemented `POST /api/<type>` for all 11 routers via a shared
+       `createPostHandler` factory (`server/src/routes/content/writeHandlers.ts`)
+6. [x] Implemented `PATCH /api/<type>/:id` for all 11 routers via a shared
+       `createPatchHandler` factory — Correctable-Fields check first, then MANUAL
+       passthrough, then `saveAs`. `sourceId` stripped from every PATCH body
+       (a raw edit would bypass `saveAs`/`targetSourceId`, the mechanism meant
+       to model that move).
+7. [x] Implemented `DELETE /api/<type>/:id` — Class and Race get a custom
+       dependent-aware handler (9 other types use a shared simple-delete
+       factory, nothing references them). Class's dependent lookup joins
+       **both** `ContentSubclass` and `ContentClassOption` per the
+       reconciliation note. Race's lookup additionally covers the
+       `ContentRace.parentRaceId` self-relation (subspecies) — not literally
+       named in §1.7's table (an oversight predating that table's own
+       ClassOption reconciliation), but structurally required since that FK
+       is `onDelete: NoAction`, not `SetNull`.
+       **`confirm` semantics resolved:** `confirm !== true` → 409 with the
+       dependents list if any exist, else 400 `CONFIRM_REQUIRED`;
+       `confirm === true` → always proceeds regardless of dependents (a
+       client that already knows to send `confirm: true` can delete in one
+       round trip).
+8. [x] Implemented `DELETE /api/sources/:id/entries` (bulk-clear) —
+       `server/src/utils/sourceContent.ts`'s `clearContentForSource`, table
+       order mirrors orchestrator.ts's already-proven per-type refresh order.
+       `confirmName` gate.
+9. [x] **Already satisfied from Phase 1.2** — `DELETE /api/sources/:id`
+       already returned the post-delete `warnings` array; refactored to reuse
+       the new shared `findOrphanWarnings` helper (behavior-preserving — same
+       pre-existing tests still pass).
+10. [x] Updated `importSource`'s `importClasses`/`importRaces` to call
+        `findClassDependentWarnings`/`findRaceDependentWarnings` right before
+        their existing delete-then-reinsert step, aggregated and written to
+        the new `ImportJob.warnings` column. **Split into two functions, not
+        one combined check** — a combined version would double-count/report
+        prematurely, since RACE and CLASS are separate content types each
+        running their own delete independently.
+        **Schema gap found and resolved with the user:** `ImportJob.warnings`
+        didn't exist (only `errorLog`) — added as a new nullable column,
+        migrated (`20260807192530_phase4_write_api`).
+11. [x] Updated `dragonledger-master-schema.md`'s `ImportJob` block with the
+        new `warnings` column. (The nullable-FK reconciliation this item
+        originally anticipated had already been done in an earlier pass.)
+12. [x] End-to-end verified via `content-write.test.ts` (real HTTP requests
+        against the live app + db, not mocked): delete an official class with
+        both an official and homebrew subclass attached → official subclass
+        gone, homebrew subclass `null`-parented and listed in the 409/204
+        response; a follow-up `deleteMany` reproducing exactly what a source
+        refresh would run doesn't throw. Same coverage for Race, including
+        the subspecies self-relation path.
+13. [x] Wrote Phase 4 tests — `server/src/__tests__/content-write.test.ts`,
+        23 tests, run against live `dev.db`. Full suite: 172/172 passing.
 
 ---
 

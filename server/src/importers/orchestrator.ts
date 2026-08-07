@@ -25,6 +25,7 @@ import type {
 import { importEvents } from './importEvents.js'
 import { computeChunkSize } from './utils/chunkSize.js'
 import { fetchAllPages } from './utils/fetchAllPages.js'
+import { findClassDependentWarnings, findRaceDependentWarnings } from '../utils/sourceContent.js'
 
 const OPEN5E_BASE = 'https://api.open5e.com/v2'
 
@@ -74,6 +75,12 @@ function chunk<T>(items: T[], size: number): T[][] {
 
 interface ImportResult {
   count: number
+  // Phase 4 §1.7's refresh row: cross-source dependents (e.g. a homebrew
+  // Subclass/ClassOption pointing at a Class this refresh is about to
+  // delete-and-reinsert) that just lost their parent link. Only importClasses
+  // and importRaces ever populate this — nothing else has cross-source
+  // dependents.
+  warnings?: string[]
 }
 
 async function importConditions(sourceId: string, documentKey: string): Promise<ImportResult> {
@@ -122,8 +129,13 @@ async function importRaces(sourceId: string, documentKey: string): Promise<Impor
   const subraceChunkSize = computeChunkSize(SUBRACE_COLUMN_COUNT)
 
   let total = 0
+  let warnings: string[] = []
 
   await prisma.$transaction(async (tx) => {
+    // Must run before the deletes below — it needs the about-to-be-replaced
+    // rows to still exist to find what currently points at them.
+    warnings = await findRaceDependentWarnings(tx, sourceId)
+
     await tx.contentSubrace.deleteMany({ where: { sourceId } })
     await tx.contentRace.deleteMany({ where: { sourceId } })
 
@@ -162,7 +174,7 @@ async function importRaces(sourceId: string, documentKey: string): Promise<Impor
     total += subraceRows.length
   })
 
-  return { count: total }
+  return { count: total, warnings }
 }
 
 async function importClasses(sourceId: string, documentKey: string): Promise<ImportResult> {
@@ -178,8 +190,13 @@ async function importClasses(sourceId: string, documentKey: string): Promise<Imp
   const featureChunkSize = computeChunkSize(CLASS_FEATURE_COLUMN_COUNT)
 
   let total = 0
+  let warnings: string[] = []
 
   await prisma.$transaction(async (tx) => {
+    // Must run before the deletes below — it needs the about-to-be-replaced
+    // rows to still exist to find what currently points at them.
+    warnings = await findClassDependentWarnings(tx, sourceId)
+
     // ContentClassFeature has no direct sourceId — cascades transitively
     // when its parent ContentClass/ContentSubclass row is deleted below
     // (onDelete: Cascade on both FKs, Prisma's own connections enforce
@@ -245,7 +262,7 @@ async function importClasses(sourceId: string, documentKey: string): Promise<Imp
     total += classFeatureRows.length
   })
 
-  return { count: total }
+  return { count: total, warnings }
 }
 
 async function importBackgrounds(sourceId: string, documentKey: string): Promise<ImportResult> {
@@ -369,6 +386,7 @@ export async function importSource(options: ImportSourceOptions): Promise<void> 
   })
 
   const errors: { contentType: string; message: string }[] = []
+  const warnings: string[] = []
   let processedItems = 0
 
   for (const type of contentTypes) {
@@ -376,6 +394,7 @@ export async function importSource(options: ImportSourceOptions): Promise<void> 
     try {
       const result = await importContentType(type, sourceId, documentKey)
       processedItems += 1
+      warnings.push(...(result.warnings ?? []))
       importEvents.emitProgress(jobId, { type, status: 'done', count: result.count })
     } catch (err) {
       const message = (err as Error).message
@@ -395,7 +414,11 @@ export async function importSource(options: ImportSourceOptions): Promise<void> 
 
   await prisma.importJob.update({
     where: { id: jobId },
-    data: { status: finalStatus, completedAt: new Date() },
+    data: {
+      status: finalStatus,
+      completedAt: new Date(),
+      warnings: warnings.length > 0 ? JSON.stringify(warnings) : null,
+    },
   })
   await prisma.source.update({ where: { id: sourceId }, data: { lastUpdated: new Date() } })
 

@@ -48,4 +48,20 @@ export const MonsterSchema = z.object({
 
 export const MonsterPartialSchema = MonsterSchema.partial()
 
+// Correctable subset: parsed/inferred structured data, not raw authored
+// text. name, description, alignment, and the raw actions/traits text are
+// deliberately excluded — editing those is a rules/flavor change, not a
+// parser-error fix. extraData.spellcasting's spell-name matches are also
+// correctable in principle, but since extraData is one opaque JSON string,
+// per-key correction there is deferred, not built this pass (see
+// phase-4-write-api-final-export.md §4).
+export const MonsterCorrectableSchema = MonsterSchema.pick({
+  savingThrows: true,
+  skills: true,
+  damageResistances: true,
+  damageImmunities: true,
+  damageVulnerabilities: true,
+  conditionImmunities: true,
+}).strict()
+
 export type Monster = z.infer<typeof MonsterSchema>

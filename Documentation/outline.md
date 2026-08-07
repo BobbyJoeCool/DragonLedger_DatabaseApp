@@ -629,60 +629,79 @@ Every content type supports:
 
 > All decisions below finalized in a dedicated design session. Full rationale:
 > `Documentation/phase-4-write-api-final-export.md`. All write endpoints require auth.
+>
+> **Implemented Phase 4** — full rationale and every resolved decision:
+> `DevTools/Claude/phase-4.md`.
 
 ### 4.1 Homebrew Destination & Seed Data
 
-- [ ] Seeded `Source` row `{ id: "homebrew", name: "Homebrew", type: MANUAL,
+- [x] Seeded `Source` row `{ id: "homebrew", name: "Homebrew", type: MANUAL,
       isDeletable: false }` present from app start (Phase 1.1)
-- [ ] `saveAs: "homebrew"` defaults to this source; client may override with
+- [x] `saveAs: "homebrew"` defaults to this source; client may override with
       `targetSourceId` to file under a different MANUAL source
 
 ### 4.2 Create — `POST /api/:type` (auth)
 
-- [ ] Body: content fields + `sourceId` (must resolve to a `MANUAL` source)
-- [ ] 201 success / 400 `SOURCE_NOT_MANUAL` / 409 `SLUG_CONFLICT` (DB-level
+- [x] Body: content fields + `sourceId` (must resolve to a `MANUAL` source)
+- [x] 201 success / 400 `SOURCE_NOT_MANUAL` / 409 `SLUG_CONFLICT` (DB-level
       `@@unique([sourceId, slug])` constraint, same for homebrew copies) /
       400 `VALIDATION_ERROR`
 
 ### 4.3 Update — `PATCH /api/:type/:id` (auth)
 
-- [ ] **Correctable Fields mechanism:** each content type gets a third Zod
+- [x] **Correctable Fields mechanism:** each content type gets a third Zod
       schema — a `.pick().strict()` subset of fields that were *derived/inferred
       by our own import parser* (safe to edit in place on an official entry
       without triggering the `saveAs` decision). If every changed field parses
       against this subset, apply in place regardless of source type.
-- [ ] Otherwise: entry already `MANUAL` → apply in place, no `saveAs` needed.
+- [x] Otherwise: entry already `MANUAL` → apply in place, no `saveAs` needed.
       Entry non-`MANUAL` and no `saveAs` → 400 `SAVE_AS_REQUIRED`.
       `saveAs: "original"` → overwrite in place. `saveAs: "homebrew"` → new row
       under the resolved homebrew destination, original untouched.
-- [ ] `saveAs: "homebrew"` is a general "duplicate this entry" action, valid
+- [x] `saveAs: "homebrew"` is a general "duplicate this entry" action, valid
       regardless of whether the original is official or already homebrew —
       not only an official-content escape hatch
-- [ ] Response codes: 200 in-place / 200 `saveAs: original` / 201 `saveAs: homebrew`
+- [x] Response codes: 200 in-place / 200 `saveAs: original` / 201 `saveAs: homebrew`
       / 400 `SAVE_AS_REQUIRED` / 409 `SLUG_CONFLICT` / 400 `VALIDATION_ERROR`
-- [ ] **Only Monster's Correctable Fields list is defined so far** (see final
-      export §4 for the worked example). The other 7 types' lists are a real,
-      un-started gap — flagged as a TODO, not a copy-paste-Monster job.
+- [x] **RESOLVED — every type's Correctable Fields list decided** (drafted
+      against this section's own criterion, confirmed with the user before
+      implementation): Spell/Condition none (their real inferred content
+      lives in `extraData`, deferred — same deferral Monster's own `extraData`
+      sub-keys get); Class: hitDie, primaryAbility, savingThrows, armorProfs,
+      weaponProfs, skillChoices, spellcastingAbility; Subclass/Subrace/Race/
+      ClassOption: their cross-source-resolved parent-link field; Background:
+      proficiencies, abilityBonuses; Item: rarity, requiresAttunement, damage,
+      properties; Feat: category; Monster: the 6 fields below (finally added
+      to the actual schema file — previously only in this doc's example).
 
 ### 4.4 Delete — `DELETE /api/:type/:id` (auth)
 
-- [ ] Body `{ confirm: true }` required for every delete
-- [ ] **Class/Race only:** pre-check for dependents (any Subclass/Subrace
+- [x] Body `{ confirm: true }` required for every delete
+- [x] **Class/Race only:** pre-check for dependents (any Subclass/Subrace
       pointing at this row, any source). Split into non-MANUAL dependents
       (will be explicitly deleted alongside the parent, in the same
       transaction — they're replaceable on next refresh) and MANUAL
       dependents (will be `SetNull`'d, kept as orphans — irreplaceable user
       work, never auto-deleted). Return both lists on first call (409
       `HAS_DEPENDENT_CHILDREN`); require `confirm: true` again to proceed.
-- [ ] Any other content type: no dependent-check, just `{ confirm: true }`
-- [ ] 204 success / 400 `CONFIRM_REQUIRED` / 409 `HAS_DEPENDENT_CHILDREN` / 404 `NOT_FOUND`
-- [ ] **Reconciliation:** `ContentClassOption` has the same dependency shape as
+      **Semantics resolved:** `confirm !== true` → 409-with-lists if
+      dependents exist, else 400; `confirm === true` → always proceeds
+      (delete + cascade + orphan) regardless of dependents, so a client that
+      already knows to confirm can do it in one round trip.
+- [x] Any other content type: no dependent-check, just `{ confirm: true }`
+- [x] 204 success / 400 `CONFIRM_REQUIRED` / 409 `HAS_DEPENDENT_CHILDREN` / 404 `NOT_FOUND`
+- [x] **Reconciliation:** `ContentClassOption` has the same dependency shape as
       `ContentSubclass` (nullable `classId`, `onDelete: SetNull`) — the
       dependent-lookup query must join through both tables, not just Subclass
+- [x] **Extended past this section's own scope:** Race's dependent-check also
+      covers the `ContentRace.parentRaceId` self-relation (subspecies) — not
+      named here (written before ClassOption's reconciliation above existed
+      either), but structurally required since that FK is `onDelete: NoAction`,
+      not `SetNull`.
 
 ### 4.5 New Endpoint — Bulk-Clear a Source
 
-- [ ] `DELETE /api/sources/:id/entries` *(auth)* — deletes every content row
+- [x] `DELETE /api/sources/:id/entries` *(auth)* — deletes every content row
       for a source across all tables, source row itself untouched. Gated by
       `{ confirmName: "<source's exact name>" }` (heavier confirmation than a
       single-entry delete, proportional to blast radius). Reuses the same
@@ -691,24 +710,25 @@ Every content type supports:
 
 ### 4.6 Error Envelope (all write endpoints)
 
-- [ ] Standardized: `{ error: { code: "SOME_CODE", message: "human-readable" } }`
+- [x] Standardized: `{ error: { code: "SOME_CODE", message: "human-readable" } }`
 
 ### 4.7 Deferred / Known Gaps
 
 - [ ] **No optimistic-concurrency check (`updatedAt`) in v1** — last save wins.
-      Documented as a known gap, not a silent omission.
+      Documented as a known gap, not a silent omission. (Still deferred —
+      unchanged by this implementation pass.)
 
 ### 4.8 Phase 4 Tests
 
-- [ ] Creating an entry under a MANUAL source succeeds; under an API source is rejected (400)
-- [ ] Editing an official entry with only Correctable Fields changed applies in place, no `saveAs`
-- [ ] Editing a non-correctable field on an official entry without `saveAs` → 400
-- [ ] `saveAs: homebrew` creates a new entry; original unchanged
-- [ ] `saveAs: original` modifies the official entry in place
-- [ ] Deleting a Class/Race with both an official and homebrew Subclass/Subrace:
+- [x] Creating an entry under a MANUAL source succeeds; under an API source is rejected (400)
+- [x] Editing an official entry with only Correctable Fields changed applies in place, no `saveAs`
+- [x] Editing a non-correctable field on an official entry without `saveAs` → 400
+- [x] `saveAs: homebrew` creates a new entry; original unchanged
+- [x] `saveAs: original` modifies the official entry in place
+- [x] Deleting a Class/Race with both an official and homebrew Subclass/Subrace:
       official dependent deleted, homebrew dependent orphaned (`null` parent) and
       listed in the response; a later refresh of that class's source doesn't error
-- [ ] Bulk-clear requires exact name match; mismatched name deletes nothing
+- [x] Bulk-clear requires exact name match; mismatched name deletes nothing
 
 ---
 

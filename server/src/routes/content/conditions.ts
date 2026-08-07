@@ -1,11 +1,27 @@
 import { Router } from 'express'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '../../db/client.js'
+import { requireAuth } from '../../middleware/auth.js'
+import {
+  ConditionCorrectableSchema,
+  ConditionPartialSchema,
+  ConditionSchema,
+} from '../../schemas/content/condition.js'
 import { envelope, parseJsonFields, parseListQuery } from './shared.js'
+import { createPatchHandler, createPostHandler, createSimpleDeleteHandler } from './writeHandlers.js'
 
 export const conditionsRouter = Router()
 
 const JSON_FIELDS = ['extraData'] as const
+
+const writeConfig = {
+  delegate: prisma.contentCondition,
+  schema: ConditionSchema,
+  partialSchema: ConditionPartialSchema,
+  correctableSchema: ConditionCorrectableSchema,
+  jsonFields: JSON_FIELDS,
+  label: 'Condition',
+}
 
 // GET /api/conditions — filters: source, q
 conditionsRouter.get('/', async (req, res) => {
@@ -42,3 +58,12 @@ conditionsRouter.get('/:id', async (req, res) => {
   }
   res.json(parseJsonFields(condition, JSON_FIELDS))
 })
+
+// POST /api/conditions (auth)
+conditionsRouter.post('/', requireAuth, createPostHandler(writeConfig))
+
+// PATCH /api/conditions/:id (auth)
+conditionsRouter.patch('/:id', requireAuth, createPatchHandler(writeConfig))
+
+// DELETE /api/conditions/:id (auth) — no dependents, simple confirm+delete
+conditionsRouter.delete('/:id', requireAuth, createSimpleDeleteHandler(writeConfig))

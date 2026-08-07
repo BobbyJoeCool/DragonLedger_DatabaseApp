@@ -1,11 +1,27 @@
 import { Router } from 'express'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '../../db/client.js'
+import { requireAuth } from '../../middleware/auth.js'
+import {
+  BackgroundCorrectableSchema,
+  BackgroundPartialSchema,
+  BackgroundSchema,
+} from '../../schemas/content/background.js'
 import { envelope, parseJsonFields, parseListQuery } from './shared.js'
+import { createPatchHandler, createPostHandler, createSimpleDeleteHandler } from './writeHandlers.js'
 
 export const backgroundsRouter = Router()
 
 const JSON_FIELDS = ['proficiencies', 'abilityBonuses', 'feature', 'extraData'] as const
+
+const writeConfig = {
+  delegate: prisma.contentBackground,
+  schema: BackgroundSchema,
+  partialSchema: BackgroundPartialSchema,
+  correctableSchema: BackgroundCorrectableSchema,
+  jsonFields: JSON_FIELDS,
+  label: 'Background',
+}
 
 // GET /api/backgrounds — filters: source, q
 backgroundsRouter.get('/', async (req, res) => {
@@ -42,3 +58,12 @@ backgroundsRouter.get('/:id', async (req, res) => {
   }
   res.json(parseJsonFields(background, JSON_FIELDS))
 })
+
+// POST /api/backgrounds (auth)
+backgroundsRouter.post('/', requireAuth, createPostHandler(writeConfig))
+
+// PATCH /api/backgrounds/:id (auth)
+backgroundsRouter.patch('/:id', requireAuth, createPatchHandler(writeConfig))
+
+// DELETE /api/backgrounds/:id (auth) — no dependents, simple confirm+delete
+backgroundsRouter.delete('/:id', requireAuth, createSimpleDeleteHandler(writeConfig))

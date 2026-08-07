@@ -1,11 +1,23 @@
 import { Router } from 'express'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '../../db/client.js'
+import { requireAuth } from '../../middleware/auth.js'
+import { ItemCorrectableSchema, ItemPartialSchema, ItemSchema } from '../../schemas/content/item.js'
 import { envelope, parseJsonFields, parseListQuery } from './shared.js'
+import { createPatchHandler, createPostHandler, createSimpleDeleteHandler } from './writeHandlers.js'
 
 export const itemsRouter = Router()
 
 const JSON_FIELDS = ['properties', 'extraData'] as const
+
+const writeConfig = {
+  delegate: prisma.contentItem,
+  schema: ItemSchema,
+  partialSchema: ItemPartialSchema,
+  correctableSchema: ItemCorrectableSchema,
+  jsonFields: JSON_FIELDS,
+  label: 'Item',
+}
 
 // GET /api/items — filters: type, rarity, source, q
 itemsRouter.get('/', async (req, res) => {
@@ -45,3 +57,12 @@ itemsRouter.get('/:id', async (req, res) => {
   }
   res.json(parseJsonFields(item, JSON_FIELDS))
 })
+
+// POST /api/items (auth)
+itemsRouter.post('/', requireAuth, createPostHandler(writeConfig))
+
+// PATCH /api/items/:id (auth)
+itemsRouter.patch('/:id', requireAuth, createPatchHandler(writeConfig))
+
+// DELETE /api/items/:id (auth) — no dependents, simple confirm+delete
+itemsRouter.delete('/:id', requireAuth, createSimpleDeleteHandler(writeConfig))

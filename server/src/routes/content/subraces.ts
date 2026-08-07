@@ -1,11 +1,27 @@
 import { Router } from 'express'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '../../db/client.js'
+import { requireAuth } from '../../middleware/auth.js'
+import {
+  SubraceCorrectableSchema,
+  SubracePartialSchema,
+  SubraceSchema,
+} from '../../schemas/content/race.js'
 import { envelope, parseJsonFields, parseListQuery } from './shared.js'
+import { createPatchHandler, createPostHandler, createSimpleDeleteHandler } from './writeHandlers.js'
 
 export const subracesRouter = Router()
 
 const JSON_FIELDS = ['size', 'speed', 'traits', 'extraData'] as const
+
+const writeConfig = {
+  delegate: prisma.contentSubrace,
+  schema: SubraceSchema,
+  partialSchema: SubracePartialSchema,
+  correctableSchema: SubraceCorrectableSchema,
+  jsonFields: JSON_FIELDS,
+  label: 'Subrace',
+}
 
 // GET /api/subraces — reached from a Race's card. filters: raceId, source, q
 subracesRouter.get('/', async (req, res) => {
@@ -44,3 +60,12 @@ subracesRouter.get('/:id', async (req, res) => {
   }
   res.json(parseJsonFields(subrace, JSON_FIELDS))
 })
+
+// POST /api/subraces (auth)
+subracesRouter.post('/', requireAuth, createPostHandler(writeConfig))
+
+// PATCH /api/subraces/:id (auth)
+subracesRouter.patch('/:id', requireAuth, createPatchHandler(writeConfig))
+
+// DELETE /api/subraces/:id (auth) — nothing references a Subrace, simple confirm+delete
+subracesRouter.delete('/:id', requireAuth, createSimpleDeleteHandler(writeConfig))

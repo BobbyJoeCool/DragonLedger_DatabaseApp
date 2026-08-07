@@ -1,4 +1,7 @@
 import type { Request } from 'express'
+import { z } from 'zod'
+import { Prisma } from '@prisma/client'
+import { prisma } from '../../db/client.js'
 
 export const DEFAULT_LIMIT = 50
 export const MAX_LIMIT = 200
@@ -55,4 +58,85 @@ export function parseJsonFields<T extends Record<string, unknown>>(
     }
   }
   return result as T
+}
+
+// Inverse of parseJsonFields — stringify listed fields before a write hits
+// Prisma. Leaves null/undefined alone (already the correct on-disk shape for
+// a nullable JSON column). Returns a loosened Record rather than T: the
+// caller's Zod-validated input type (e.g. classes: string[]) no longer
+// matches the now-stringified runtime shape, so callers cast the result to
+// the relevant Prisma Create/UpdateInput at the call site.
+export function serializeJsonFields<T extends Record<string, unknown>>(
+  record: T,
+  fields: readonly string[],
+): Record<string, unknown> {
+  const result: Record<string, unknown> = { ...record }
+  for (const field of fields) {
+    const value = result[field]
+    if (value !== undefined && value !== null && typeof value !== 'string') {
+      result[field] = JSON.stringify(value)
+    }
+  }
+  return result
+}
+
+// PATCH's Correctable Fields check (Phase 4 §4): true only when every key
+// present in changedFields both belongs to and validates against the
+// type's Correctable subset schema.
+export function isFullyCorrectable(
+  changedFields: Record<string, unknown>,
+  correctableSchema: z.ZodTypeAny,
+): boolean {
+  return correctableSchema.safeParse(changedFields).success
+}
+
+// Splits a content type's cross-source dependents (Subclass/ClassOption for
+// a Class; Subrace/subspecies-Race for a Race) by their own source's type —
+// non-MANUAL dependents are replaceable (deleted alongside the parent; they
+// reappear on that source's next refresh), MANUAL dependents are
+// irreplaceable user work (SetNull'd, kept as orphans). Phase 4 §1.7.
+export function classifyDependents<T extends { source: { type: string } }>(
+  rows: T[],
+): { willDelete: T[]; willOrphan: T[] } {
+  return {
+    willDelete: rows.filter((r) => r.source.type !== 'MANUAL'),
+    willOrphan: rows.filter((r) => r.source.type === 'MANUAL'),
+  }
+}
+
+export interface DependentEntry {
+  type: string
+  id: string
+  name: string
+}
+
+// Tags a classified dependent list with its table name, e.g. "subclass" /
+// "classOption" — used by Class/Race's dependent-aware DELETE (Phase 4 §1.7)
+// to build the combined willDelete/willOrphan lists in the 409 response.
+export function toDependentEntries<T extends { id: string; name: string }>(
+  type: string,
+  rows: T[],
+): DependentEntry[] {
+  return rows.map((r) => ({ type, id: r.id, name: r.name }))
+}
+
+export function zodFieldErrors(error: z.ZodError): Record<string, string> {
+  const fields: Record<string, string> = {}
+  for (const issue of error.issues) {
+    fields[issue.path.join('.') || '(root)'] = issue.message
+  }
+  return fields
+}
+
+export function isUniqueConstraintError(err: unknown): boolean {
+  return err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002'
+}
+
+// POST's sourceId and PATCH saveAs:"homebrew"'s target both need a
+// MANUAL-type destination Source. Returns null if the id doesn't resolve to
+// one — caller maps that to 400 SOURCE_NOT_MANUAL.
+export async function resolveManualSource(sourceId: string): Promise<{ id: string } | null> {
+  const source = await prisma.source.findUnique({ where: { id: sourceId } })
+  if (!source || source.type !== 'MANUAL') return null
+  return { id: source.id }
 }

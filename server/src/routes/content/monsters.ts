@@ -1,7 +1,14 @@
 import { Router } from 'express'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '../../db/client.js'
+import { requireAuth } from '../../middleware/auth.js'
+import {
+  MonsterCorrectableSchema,
+  MonsterPartialSchema,
+  MonsterSchema,
+} from '../../schemas/content/monster.js'
 import { envelope, parseJsonFields, parseListQuery } from './shared.js'
+import { createPatchHandler, createPostHandler, createSimpleDeleteHandler } from './writeHandlers.js'
 
 export const monstersRouter = Router()
 
@@ -18,6 +25,15 @@ const JSON_FIELDS = [
   'legendaryActions',
   'extraData',
 ] as const
+
+const writeConfig = {
+  delegate: prisma.contentMonster,
+  schema: MonsterSchema,
+  partialSchema: MonsterPartialSchema,
+  correctableSchema: MonsterCorrectableSchema,
+  jsonFields: JSON_FIELDS,
+  label: 'Monster',
+}
 
 // GET /api/monsters — filters: cr, type, source, q
 monstersRouter.get('/', async (req, res) => {
@@ -58,3 +74,12 @@ monstersRouter.get('/:id', async (req, res) => {
   }
   res.json(parseJsonFields(monster, JSON_FIELDS))
 })
+
+// POST /api/monsters (auth)
+monstersRouter.post('/', requireAuth, createPostHandler(writeConfig))
+
+// PATCH /api/monsters/:id (auth)
+monstersRouter.patch('/:id', requireAuth, createPatchHandler(writeConfig))
+
+// DELETE /api/monsters/:id (auth) — no dependents, simple confirm+delete
+monstersRouter.delete('/:id', requireAuth, createSimpleDeleteHandler(writeConfig))

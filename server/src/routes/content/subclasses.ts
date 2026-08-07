@@ -1,11 +1,27 @@
 import { Router } from 'express'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '../../db/client.js'
+import { requireAuth } from '../../middleware/auth.js'
+import {
+  SubclassCorrectableSchema,
+  SubclassPartialSchema,
+  SubclassSchema,
+} from '../../schemas/content/class.js'
 import { envelope, parseJsonFields, parseListQuery } from './shared.js'
+import { createPatchHandler, createPostHandler, createSimpleDeleteHandler } from './writeHandlers.js'
 
 export const subclassesRouter = Router()
 
 const JSON_FIELDS = ['extraData'] as const
+
+const writeConfig = {
+  delegate: prisma.contentSubclass,
+  schema: SubclassSchema,
+  partialSchema: SubclassPartialSchema,
+  correctableSchema: SubclassCorrectableSchema,
+  jsonFields: JSON_FIELDS,
+  label: 'Subclass',
+}
 
 // GET /api/subclasses — reached from a Class's card. filters: classId, source, q
 subclassesRouter.get('/', async (req, res) => {
@@ -48,3 +64,12 @@ subclassesRouter.get('/:id', async (req, res) => {
   const { features, ...rest } = subclass
   res.json({ ...parseJsonFields(rest, JSON_FIELDS), features })
 })
+
+// POST /api/subclasses (auth)
+subclassesRouter.post('/', requireAuth, createPostHandler(writeConfig))
+
+// PATCH /api/subclasses/:id (auth)
+subclassesRouter.patch('/:id', requireAuth, createPatchHandler(writeConfig))
+
+// DELETE /api/subclasses/:id (auth) — nothing references a Subclass, simple confirm+delete
+subclassesRouter.delete('/:id', requireAuth, createSimpleDeleteHandler(writeConfig))
