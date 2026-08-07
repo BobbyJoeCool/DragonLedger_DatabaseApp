@@ -5,6 +5,17 @@ import { healthRouter } from './routes/health.js'
 import { authRouter } from './routes/auth.js'
 import { sourcesRouter } from './routes/sources.js'
 import { importRouter } from './routes/import.js'
+import { spellsRouter } from './routes/content/spells.js'
+import { classesRouter } from './routes/content/classes.js'
+import { subclassesRouter } from './routes/content/subclasses.js'
+import { racesRouter } from './routes/content/races.js'
+import { subracesRouter } from './routes/content/subraces.js'
+import { backgroundsRouter } from './routes/content/backgrounds.js'
+import { conditionsRouter } from './routes/content/conditions.js'
+import { itemsRouter } from './routes/content/items.js'
+import { monstersRouter } from './routes/content/monsters.js'
+import { featsRouter } from './routes/content/feats.js'
+import { classOptionsRouter } from './routes/content/classOptions.js'
 import { errorHandler } from './middleware/errorHandler.js'
 import { logger } from './lib/logger.js'
 
@@ -34,6 +45,19 @@ app.use('/api', healthRouter)
 app.use('/api/auth', authRouter)
 app.use('/api/sources', sourcesRouter)
 app.use('/api/import', importRouter)
+
+// Phase 3 — Content Read API. All public, no auth (outline.md §PHASE 3).
+app.use('/api/spells', spellsRouter)
+app.use('/api/classes', classesRouter)
+app.use('/api/subclasses', subclassesRouter)
+app.use('/api/races', racesRouter)
+app.use('/api/subraces', subracesRouter)
+app.use('/api/backgrounds', backgroundsRouter)
+app.use('/api/conditions', conditionsRouter)
+app.use('/api/items', itemsRouter)
+app.use('/api/monsters', monstersRouter)
+app.use('/api/feats', featsRouter)
+app.use('/api/class-options', classOptionsRouter)
 
 // Single-process production mode (Phase 0.7): when CLIENT_DIST_DIR is set,
 // Express serves the built React app alongside its own API routes on one

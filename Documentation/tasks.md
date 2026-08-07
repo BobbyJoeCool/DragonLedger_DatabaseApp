@@ -328,15 +328,26 @@ outline.md's Open Questions appendix — resolve that first rather than guessing
 
 ## Phase 3 — Read API
 
-- [ ] Confirm/add `?fields=name` lightweight mode to the shared query pattern
-      (returns `{id, name}[]` only) — **blocks Phase 5's name-index hook**
-- [ ] Build/verify all 8 content types' list + detail endpoints (Spell, Class,
+- [x] Confirm/add `?fields=name` lightweight mode to the shared query pattern
+      (returns `{id, name}[]` only) — **blocks Phase 5's name-index hook**.
+      Bare array, not wrapped in the pagination envelope; ignores `page`/`limit`
+      and returns every filtered match (the position bar needs names across
+      the whole result set, not just one page).
+- [x] Build/verify all 8 content types' list + detail endpoints (Spell, Class,
       Subclass, Race, Subrace, Background, Condition, Item, Monster, **Feat**)
-- [ ] **[DECISION NEEDED]** Decide whether `ContentClassOption` gets its own
-      `GET /api/class-options?classId=` endpoint or is only ever nested under
-      a Class's detail response, before building either
-- [ ] Write Phase 3 tests (shape, filter combination, pagination totals,
-      `?fields=name` shape, 404 on unknown id)
+      — 11 routers total counting Subclass/Subrace/ClassOption
+      (`server/src/routes/content/*.ts`), all mounted in `app.ts`, all public
+      (no auth, per outline.md §PHASE 3). `Class`/`Subclass` detail responses
+      also embed their `ContentClassFeature` rows (ordered by level) — not a
+      top-level browsable type, so nested rather than given its own endpoint.
+- [x] **RESOLVED — dedicated endpoint.** `GET /api/class-options` (filters:
+      `classId`, `pool`, `source`, `q`) — mirrors the Subclass/Subrace pattern.
+      Chosen over class-nesting since most live rows have `classId: null`
+      (general options not yet linked to a class) and still need to be
+      independently listable/searchable.
+- [x] Write Phase 3 tests (shape, filter combination, pagination totals,
+      `?fields=name` shape, 404 on unknown id) — `server/src/__tests__/content.test.ts`,
+      27 tests, run against live `dev.db` (same convention as `sources.test.ts`)
 
 ---
 

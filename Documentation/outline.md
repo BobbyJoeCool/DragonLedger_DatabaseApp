@@ -590,10 +590,13 @@ Every content type supports:
 - `?q=` — name search (case-insensitive, partial match)
 - `?page=` / `?limit=` — pagination (default limit: 50)
 - Response envelope: `{ data: [], total, page, limit }`
-- [ ] **New requirement, surfaced by Phase 5:** `?fields=name` (or equivalent)
+- [x] **New requirement, surfaced by Phase 5:** `?fields=name` (or equivalent)
       lightweight mode returning only `{ id, name }` pairs — powers the Browse
       position-bar name index without a full-record fetch per row. Confirm this
       is built before Phase 5's `useContentNameIndex` hook is implemented.
+      **Implemented:** bare `{id,name}[]` array (no envelope), ignores
+      `page`/`limit` — returns every filtered match, since the position bar
+      needs names across the whole result set.
 
 ### 3.2 Endpoints Per Content Type
 
@@ -606,9 +609,11 @@ Every content type supports:
 **Monsters** — `GET /api/monsters` (filters: `cr`, `type`, `source`, `q`), `GET /api/monsters/:id`
 **Feats** *(new type)* — `GET /api/feats` (filters: `category`, `source`, `q`), `GET /api/feats/:id`
 
-- [ ] **Open question:** does `ContentClassOption` need its own top-level
-      endpoint (`GET /api/class-options?classId=`), or is it only ever fetched
-      nested under a Class's detail response? Not decided — see Open Questions.
+- [x] **RESOLVED:** `ContentClassOption` gets its own top-level endpoint,
+      `GET /api/class-options` (filters: `classId`, `pool`, `source`, `q`) —
+      not only nested under a Class's detail response. Chosen because most
+      live rows have `classId: null` (general Maneuvers/Invocations not yet
+      linked to a class) and still need to be independently listable.
 
 ### 3.3 Phase 3 Tests
 
@@ -1172,7 +1177,8 @@ explicitly deferred.
 1. **`ContentClassOption`'s Browse/Edit treatment** — own Browse tab or
    surfaced only from a Class's detail view? Own edit form or edited within
    the parent Class's form? **Not yet decided.** (Phase 5 §5.5, Phase 7 §7.6)
-2. **`ContentClassOption` read-API shape** — own top-level endpoint, or nested-only under Class detail? (Phase 3 §3.2)
+~~2. **`ContentClassOption` read-API shape**~~ — **RESOLVED (Phase 3):** own
+   top-level endpoint, `GET /api/class-options`. See §3.2.
 
 ### Needs implementation work before it can be trusted, not a decision
 
