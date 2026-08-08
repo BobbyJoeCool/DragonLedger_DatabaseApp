@@ -1,5 +1,5 @@
 import type { Prisma } from '@prisma/client'
-import { MonsterSchema } from '../../schemas/content/monster.js'
+import { MonsterSchema } from '@dragonledger/content-types'
 import { slugify } from '../../utils/slugify.js'
 import { parseCompositeResistanceList } from '../shared/resistance.js'
 import { extractTelepathyRange } from '../shared/telepathy.js'

@@ -2,7 +2,7 @@ import { Router } from 'express'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '../../db/client.js'
 import { requireAuth } from '../../middleware/auth.js'
-import { FeatCorrectableSchema, FeatPartialSchema, FeatSchema } from '../../schemas/content/feat.js'
+import { FeatCorrectableSchema, FeatPartialSchema, FeatSchema } from '@dragonledger/content-types'
 import { envelope, parseJsonFields, parseListQuery, sourceWhere } from './shared.js'
 import { createPatchHandler, createPostHandler, createSimpleDeleteHandler } from './writeHandlers.js'
 

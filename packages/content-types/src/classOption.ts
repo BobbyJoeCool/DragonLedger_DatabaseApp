@@ -17,14 +17,16 @@ export const ClassOptionSchema = z.object({
 
 export const ClassOptionPartialSchema = ClassOptionSchema.partial()
 
-// Correctable subset: classId is the same cross-source-resolution-style
-// field as Subclass.classId/Subrace.raceId — currently null on all 126 live
-// rows (no importer has resolved it yet), but the same "parser inference,
-// not a rules edit" logic applies once it is populated. pool is a direct
-// copy of the source's Options-suffix distinction (Maneuver, Metamagic,
-// etc.), not an inference.
-export const ClassOptionCorrectableSchema = ClassOptionSchema.pick({
+// Correctable subset: source-type-based (see phase-4-write-api-final-export.md
+// §4), applied for consistency with Subclass/Subrace even though
+// ClassOption has no standalone form (it's edited inline within ClassForm,
+// §0.1). Every field is correctable except the lock list — name/slug/
+// sourceId plus classId, the parent-relation FK.
+export const ClassOptionCorrectableSchema = ClassOptionSchema.omit({
+  name: true,
+  slug: true,
+  sourceId: true,
   classId: true,
-}).strict()
+}).partial().strict()
 
 export type ClassOption = z.infer<typeof ClassOptionSchema>

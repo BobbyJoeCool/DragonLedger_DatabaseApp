@@ -1,5 +1,5 @@
 import type { Prisma } from '@prisma/client'
-import { RaceSchema, SubraceSchema, type RaceTrait } from '../../schemas/content/race.js'
+import { RaceSchema, SubraceSchema, type RaceTrait } from '@dragonledger/content-types'
 import { slugify } from '../../utils/slugify.js'
 import { toJsonString } from '../utils/json.js'
 import { extractCitation } from './citation.js'

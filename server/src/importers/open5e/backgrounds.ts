@@ -1,5 +1,5 @@
 import type { Prisma } from '@prisma/client'
-import { BackgroundSchema } from '../../schemas/content/background.js'
+import { BackgroundSchema } from '@dragonledger/content-types'
 import { toJsonString } from '../utils/json.js'
 import { ABILITY_NAME_TO_CODE } from './abilities.js'
 import { type ProficiencyGrant, parseProficiencyGrant, splitOptionList } from './proseGrant.js'

@@ -18,6 +18,7 @@ function logResult(label: string, res: request.Response, passed: boolean) {
 
 const OFFICIAL_SOURCE_ID = 'phase4-test-official'
 const MANUAL_SOURCE_ID = 'phase4-test-manual'
+const API_SOURCE_ID = 'phase4-test-api'
 
 const createdFeatIds: string[] = []
 
@@ -40,6 +41,17 @@ async function setupSources() {
       id: MANUAL_SOURCE_ID,
       name: 'Phase 4 Test Manual Source',
       type: 'MANUAL',
+      lastUpdated: new Date(),
+      isDeletable: true,
+    },
+  })
+  await prisma.source.upsert({
+    where: { id: API_SOURCE_ID },
+    update: {},
+    create: {
+      id: API_SOURCE_ID,
+      name: 'Phase 4 Test API Source',
+      type: 'API',
       lastUpdated: new Date(),
       isDeletable: true,
     },
@@ -113,7 +125,7 @@ describe('Content Write API — POST', () => {
 })
 
 describe('Content Write API — PATCH (Correctable Fields + saveAs)', () => {
-  it('correctable field on an official entry applies in place, no saveAs needed', async () => {
+  it('correctable field (FILE source) applies in place, no saveAs needed', async () => {
     const feat = await prisma.contentFeat.create({
       data: {
         slug: 'test-feat-correctable',
@@ -134,7 +146,25 @@ describe('Content Write API — PATCH (Correctable Fields + saveAs)', () => {
     expect(stillOfficial?.sourceId).toBe(OFFICIAL_SOURCE_ID)
   })
 
-  it('non-correctable field on an official entry without saveAs → 400 SAVE_AS_REQUIRED', async () => {
+  it('a FILE source can also correct fields the old curated list never covered (e.g. description)', async () => {
+    const feat = await prisma.contentFeat.create({
+      data: {
+        slug: 'test-feat-broad-correctable',
+        sourceId: OFFICIAL_SOURCE_ID,
+        name: 'Test Feat Broad Correctable',
+        category: 'GENERAL',
+        description: 'Original description.',
+      },
+    })
+    const res = await auth(request(app).patch(`/api/feats/${feat.id}`)).send({
+      description: 'Edited description.',
+    })
+    logResult('PATCH feat broad correctable (FILE)', res, res.status === 200)
+    expect(res.status).toBe(200)
+    expect(res.body.description).toBe('Edited description.')
+  })
+
+  it('lock-list field (name) on a FILE-sourced entry without saveAs → 400 SAVE_AS_REQUIRED', async () => {
     const feat = await prisma.contentFeat.create({
       data: {
         slug: 'test-feat-noncorrectable',
@@ -145,9 +175,9 @@ describe('Content Write API — PATCH (Correctable Fields + saveAs)', () => {
       },
     })
     const res = await auth(request(app).patch(`/api/feats/${feat.id}`)).send({
-      description: 'Edited description.',
+      name: 'Edited Name.',
     })
-    logResult('PATCH feat non-correctable no saveAs', res, res.status === 400)
+    logResult('PATCH feat lock-list field no saveAs', res, res.status === 400)
     expect(res.status).toBe(400)
     expect(res.body.error.code).toBe('SAVE_AS_REQUIRED')
   })
@@ -163,12 +193,12 @@ describe('Content Write API — PATCH (Correctable Fields + saveAs)', () => {
       },
     })
     const res = await auth(request(app).patch(`/api/feats/${feat.id}`)).send({
-      description: 'Overwritten description.',
+      name: 'Overwritten Name',
       saveAs: 'original',
     })
     logResult('PATCH feat saveAs original', res, res.status === 200)
     expect(res.status).toBe(200)
-    expect(res.body.description).toBe('Overwritten description.')
+    expect(res.body.name).toBe('Overwritten Name')
     expect(res.body.sourceId).toBe(OFFICIAL_SOURCE_ID)
   })
 
@@ -183,18 +213,18 @@ describe('Content Write API — PATCH (Correctable Fields + saveAs)', () => {
       },
     })
     const res = await auth(request(app).patch(`/api/feats/${feat.id}`)).send({
-      description: 'Homebrew copy description.',
+      name: 'Homebrew Copy Name',
       saveAs: 'homebrew',
     })
     const passed = res.status === 201 && res.body.sourceId === 'homebrew' && res.body.id !== feat.id
     logResult('PATCH feat saveAs homebrew', res, passed)
     expect(res.status).toBe(201)
     expect(res.body.sourceId).toBe('homebrew')
-    expect(res.body.description).toBe('Homebrew copy description.')
+    expect(res.body.name).toBe('Homebrew Copy Name')
     createdFeatIds.push(res.body.id)
 
     const original = await prisma.contentFeat.findUnique({ where: { id: feat.id } })
-    expect(original?.description).toBe('Original description.')
+    expect(original?.name).toBe('Test Feat SaveAs Homebrew')
     expect(original?.sourceId).toBe(OFFICIAL_SOURCE_ID)
   })
 
@@ -216,7 +246,7 @@ describe('Content Write API — PATCH (Correctable Fields + saveAs)', () => {
     expect(res.body.description).toBe('Edited without saveAs.')
   })
 
-  it('a Spell (empty Correctable set) requires saveAs for any field edit on an official entry', async () => {
+  it('a FILE-sourced Spell can correct a field the old empty curated list never allowed', async () => {
     const spell = await prisma.contentSpell.create({
       data: {
         slug: 'test-spell-patch',
@@ -235,9 +265,41 @@ describe('Content Write API — PATCH (Correctable Fields + saveAs)', () => {
       },
     })
     const res = await auth(request(app).patch(`/api/spells/${spell.id}`)).send({ level: 2 })
-    logResult('PATCH spell empty-correctable no saveAs', res, res.status === 400)
+    logResult('PATCH spell FILE broad correctable', res, res.status === 200)
+    expect(res.status).toBe(200)
+    expect(res.body.level).toBe(2)
+  })
+
+  it('an API-sourced Spell rejects an in-place edit even for a field that would be correctable on a FILE source', async () => {
+    const spell = await prisma.contentSpell.create({
+      data: {
+        slug: 'test-spell-api-patch',
+        sourceId: API_SOURCE_ID,
+        name: 'Test Spell API Patch',
+        level: 1,
+        school: 'evocation',
+        castingTime: 'action',
+        range: '30 feet',
+        components: 'V, S',
+        duration: 'instantaneous',
+        concentration: false,
+        ritual: false,
+        classes: '[]',
+        description: 'Original.',
+      },
+    })
+    const res = await auth(request(app).patch(`/api/spells/${spell.id}`)).send({ level: 2 })
+    logResult('PATCH spell API no in-place edit', res, res.status === 400)
     expect(res.status).toBe(400)
     expect(res.body.error.code).toBe('SAVE_AS_REQUIRED')
+
+    // saveAs: 'original' still works — API just never skips straight to it.
+    const withSaveAs = await auth(request(app).patch(`/api/spells/${spell.id}`)).send({
+      level: 2,
+      saveAs: 'original',
+    })
+    expect(withSaveAs.status).toBe(200)
+    expect(withSaveAs.body.level).toBe(2)
   })
 
   it('PATCH unknown id → 404 NOT_FOUND', async () => {
@@ -561,7 +623,7 @@ describe('Content Write API — DELETE /api/sources/:id/entries (bulk-clear)', (
 afterAll(async () => {
   // Safety net in case an assertion failed before a test's own inline
   // cleanup ran — order matters (children before parents, FK-safe).
-  const testSourceIds = [OFFICIAL_SOURCE_ID, MANUAL_SOURCE_ID]
+  const testSourceIds = [OFFICIAL_SOURCE_ID, MANUAL_SOURCE_ID, API_SOURCE_ID]
   await prisma.contentFeat.deleteMany({ where: { id: { in: createdFeatIds } } })
   await prisma.contentSpell.deleteMany({ where: { sourceId: { in: testSourceIds } } })
   await prisma.contentMonster.deleteMany({ where: { sourceId: { in: testSourceIds } } })

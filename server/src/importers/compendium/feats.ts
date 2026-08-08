@@ -1,5 +1,5 @@
 import type { Prisma } from '@prisma/client'
-import { FeatSchema } from '../../schemas/content/feat.js'
+import { FeatSchema } from '@dragonledger/content-types'
 import { slugify } from '../../utils/slugify.js'
 import { toJsonString } from '../utils/json.js'
 import { extractCitation } from './citation.js'

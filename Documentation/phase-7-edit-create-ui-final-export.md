@@ -22,11 +22,55 @@ react-hook-form + Zod (the standard shadcn/ui pairing), using react-hook-form's 
 
 **Already resolved by Phase 4's "Correctable Fields" mechanism** — not a new Phase 7 decision. The Save button's behavior updates live as the user edits: while every currently-changed field is on that content type's Correctable Fields list, the button reads "Save" and submits in place with no interruption, even on an official entry. The moment any non-correctable field becomes dirty, the button's label/behavior switches to "Save as..." (prompting original-vs-homebrew), without a separate modal interrupt step. This makes the distinction visible to the user as they type, not a surprise at submit time.
 
+**Underlying rule revised (2026-08-08, see `phase-4-write-api-final-export.md` §4):** what counts as "correctable" is no longer a per-type curated field list — it's now source-type-based. An **Open5e (`API`)** entry has zero correctable fields, so editing *any* field on it always flips the button to "Save as..." immediately. A **Compendium (`FILE`)** entry has every field correctable except the fixed lock list (`name`, `slug`, `sourceId`, and the parent-relation FK on Subclass/Subrace) — editing `name` flips to "Save as...", everything else stays "Save." A **`MANUAL`** (homebrew) entry is unaffected — always "Save," no prompt. The live-updating button behavior itself doesn't change, only which fields it treats as correctable per entry.
+
 ### 1.5 Unsaved-Changes Handling
 
 A route-leave guard warns before discarding unsaved changes (navigating to Browse, closing, hitting back with a dirty form) — not skipped for v1. Consistent with the "marketable product" framing from Section 1.3; silent data loss isn't acceptable for a real tool, even a small one.
 
-### 1.6 Homebrew-Source Picker on Create
+### 1.6 Per-Type Form Layout Base Pattern — RESOLVED (2026-08-08)
+
+Added as the base template for the 7.2 per-type sessions (roadmap
+`v1-roadmap-open-decisions.md`), before any individual type's fields are
+designed:
+
+- **Form layout mirrors the card, field-for-field.** `<Type>Form` isn't a
+  generic top-to-bottom field list — it's laid out to match
+  `card-design-spec.md`'s field grouping and order for that type. It remains
+  a **separate component from the read-only `<Type>Card`**, not the same
+  component toggled into an edit mode — no shared card/form component, just
+  matching visual structure.
+- **Advanced Fields section at the bottom, for fields not on the card.**
+  Any field that exists on the type but isn't part of the printable card
+  (import-only metadata, less-common `extraData` keys) is editable and
+  appended in a dedicated "Advanced Fields" section at the end of the form —
+  fully part of the same submit, not read-only reference.
+- **Advanced per-field save, scoped to Correctable Fields only.** In
+  addition to the whole-form Save/Save-As button (Section 1.4), any field
+  that's currently correctable for that entry gets its own independent save
+  affordance — committing a single correction without touching or
+  resubmitting the rest of the form. Non-correctable fields are **not**
+  offered a per-field save; editing one still routes through the existing
+  whole-form Save-As flow. This keeps a single set of rules (correctable =
+  always safe to commit in place, at any granularity) rather than
+  introducing a second, parallel per-field Save-As mechanism.
+- **Revised (2026-08-08):** correctability is now source-type-based, not a
+  per-type curated list (see §1.4 and `phase-4-write-api-final-export.md`
+  §4). Practical effect for this per-field save affordance: on an
+  Open5e-sourced entry, **no field ever gets a per-field save button** —
+  every edit goes through whole-form Save-As. On a Compendium-sourced
+  entry, **every field except `name` (and `slug`/`sourceId`/the parent FK,
+  none of which are exposed as editable form fields anyway) gets one.**
+  This is a much larger surface than originally anticipated when this
+  pattern was first proposed — item 7.3 (per-type Correctable Fields
+  review) is now mostly just confirming the lock list applies cleanly to
+  each type, not building a bespoke list per type.
+- **Consequence for sequencing:** unchanged — a type's Correctable Fields
+  treatment still needs to be settled *before or during* that type's
+  field-layout session, since it determines which fields in that layout get
+  a per-field save affordance.
+
+### 1.7 Homebrew-Source Picker on Create
 
 Defaults to the seeded, non-deletable `"homebrew"` Source (Phase 4) automatically, with a dropdown available to redirect to a different `MANUAL` source. Matches how `saveAs: "homebrew"` already resolves to this same source by default when no target is specified — the create form's default is a natural continuation of that existing behavior, not a new pattern.
 

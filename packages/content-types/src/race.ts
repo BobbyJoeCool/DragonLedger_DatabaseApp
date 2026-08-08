@@ -28,13 +28,17 @@ export const RaceSchema = z.object({
 
 export const RacePartialSchema = RaceSchema.partial()
 
-// Correctable subset: parentRaceId is resolved by slug/name lookup against
-// other Race rows for real 2014-style subspecies — a genuine parser
-// inference. size/speed/traits are largely a direct structural transcription
-// of source content, not an inference; description is raw prose.
-export const RaceCorrectableSchema = RaceSchema.pick({
-  parentRaceId: true,
-}).strict()
+// Correctable subset: source-type-based (see phase-4-write-api-final-export.md
+// §4). Every field is correctable except the fixed lock list (name/slug/
+// sourceId) — the roadmap's lock list only names the parent-relation FK on
+// Subclass/Subrace, not Race.parentRaceId (a same-type self-relation for
+// 2014-style subspecies-as-races, not a cross-type parent link), so it stays
+// correctable here, consistent with the old rule.
+export const RaceCorrectableSchema = RaceSchema.omit({
+  name: true,
+  slug: true,
+  sourceId: true,
+}).partial().strict()
 
 export const SubraceSchema = z.object({
   slug: z.string().min(1),
@@ -50,11 +54,17 @@ export const SubraceSchema = z.object({
 
 export const SubracePartialSchema = SubraceSchema.partial()
 
-// Correctable subset: raceId is resolved the same way as Subclass.classId
-// (cross-source parent matching, extraData.unresolvedRaceName on failure).
-export const SubraceCorrectableSchema = SubraceSchema.pick({
+// Correctable subset: source-type-based (see phase-4-write-api-final-export.md
+// §4). Every field is correctable except the lock list — name/slug/
+// sourceId plus raceId, the parent-relation FK, which is locked here
+// (unlike the old per-field list, which had picked exactly this field as
+// the *only* correctable one — the rule inverted, not just widened).
+export const SubraceCorrectableSchema = SubraceSchema.omit({
+  name: true,
+  slug: true,
+  sourceId: true,
   raceId: true,
-}).strict()
+}).partial().strict()
 
 export type Race = z.infer<typeof RaceSchema>
 export type Subrace = z.infer<typeof SubraceSchema>

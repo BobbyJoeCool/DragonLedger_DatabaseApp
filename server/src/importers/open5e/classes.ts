@@ -1,5 +1,5 @@
 import type { Prisma } from '@prisma/client'
-import { ClassSchema, SubclassSchema } from '../../schemas/content/class.js'
+import { ClassSchema, SubclassSchema } from '@dragonledger/content-types'
 import type { ExplodedClassFeature } from '../shared/classFeature.js'
 import { toJsonString } from '../utils/json.js'
 import { ABILITY_NAME_TO_CODE } from './abilities.js'

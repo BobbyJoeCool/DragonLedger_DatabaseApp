@@ -1,5 +1,5 @@
 import type { Prisma } from '@prisma/client'
-import { ItemSchema } from '../../schemas/content/item.js'
+import { ItemSchema } from '@dragonledger/content-types'
 import { slugify } from '../../utils/slugify.js'
 import { toJsonString } from '../utils/json.js'
 import { extractCitation } from './citation.js'

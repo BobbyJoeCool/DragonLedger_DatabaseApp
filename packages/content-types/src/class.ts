@@ -23,21 +23,14 @@ export const ClassSchema = z.object({
 
 export const ClassPartialSchema = ClassSchema.partial()
 
-// Correctable subset: every field here is inferred by the import parser from
-// a shared markdown feature table (CORE_TRAITS_TABLE) or a fallback chain
-// (hitDie: nested hit_points.hit_dice > table row > feature scan > hardcoded
-// SRD table), not copied directly from a single unambiguous source field —
-// real parser mistakes were found and fixed here during Phase 2. `name` and
-// `description` are excluded as raw authored text.
-export const ClassCorrectableSchema = ClassSchema.pick({
-  hitDie: true,
-  primaryAbility: true,
-  savingThrows: true,
-  armorProfs: true,
-  weaponProfs: true,
-  skillChoices: true,
-  spellcastingAbility: true,
-}).strict()
+// Correctable subset: source-type-based, not a per-field curated list (see
+// phase-4-write-api-final-export.md §4). Every field is correctable except
+// the fixed lock list (name/slug/sourceId).
+export const ClassCorrectableSchema = ClassSchema.omit({
+  name: true,
+  slug: true,
+  sourceId: true,
+}).partial().strict()
 
 export const SubclassSchema = z.object({
   slug: z.string().min(1),
@@ -50,14 +43,17 @@ export const SubclassSchema = z.object({
 
 export const SubclassPartialSchema = SubclassSchema.partial()
 
-// Correctable subset: classId is resolved by the importer's cross-source
-// parent-matching logic (prefer Open5e match → Compendium match → null +
-// extraData.unresolvedClassName) — a genuine parser inference the user may
-// need to fix without it counting as a rules/flavor edit. name/description
-// are raw authored text.
-export const SubclassCorrectableSchema = SubclassSchema.pick({
+// Correctable subset: source-type-based (see phase-4-write-api-final-export.md
+// §4). Every field is correctable except the fixed lock list — name/slug/
+// sourceId plus classId, the parent-relation FK, which is locked here
+// (unlike the old per-field list, which had picked exactly this field as
+// the *only* correctable one — the rule inverted, not just widened).
+export const SubclassCorrectableSchema = SubclassSchema.omit({
+  name: true,
+  slug: true,
+  sourceId: true,
   classId: true,
-}).strict()
+}).partial().strict()
 
 export type Class = z.infer<typeof ClassSchema>
 export type Subclass = z.infer<typeof SubclassSchema>

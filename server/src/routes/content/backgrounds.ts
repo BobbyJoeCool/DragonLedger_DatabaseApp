@@ -6,7 +6,7 @@ import {
   BackgroundCorrectableSchema,
   BackgroundPartialSchema,
   BackgroundSchema,
-} from '../../schemas/content/background.js'
+} from '@dragonledger/content-types'
 import { envelope, parseJsonFields, parseListQuery, sourceWhere } from './shared.js'
 import { createPatchHandler, createPostHandler, createSimpleDeleteHandler } from './writeHandlers.js'
 

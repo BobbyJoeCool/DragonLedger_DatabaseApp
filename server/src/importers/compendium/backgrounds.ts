@@ -1,5 +1,5 @@
 import type { Prisma } from '@prisma/client'
-import { BackgroundSchema } from '../../schemas/content/background.js'
+import { BackgroundSchema } from '@dragonledger/content-types'
 import { ABILITY_NAME_TO_CODE } from '../open5e/abilities.js'
 import { parseProficiencyGrant, splitOptionList } from '../open5e/proseGrant.js'
 import { slugify } from '../../utils/slugify.js'

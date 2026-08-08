@@ -81,9 +81,13 @@ export function createPostHandler(config: ContentWriteConfig) {
   }
 }
 
-// PATCH /api/<type>/:id (Phase 4 §3/§4): Correctable Fields check first
-// (apply in place regardless of source type), then MANUAL-entry passthrough,
-// then the saveAs flow for non-MANUAL/non-correctable edits.
+// PATCH /api/<type>/:id (Phase 4 §3, revised by phase-4-write-api-final-export.md
+// §4 2026-08-08): correctability is source-type-based, not a blanket
+// per-type check. MANUAL sources always apply in place. FILE (Compendium)
+// sources apply in place only for fields outside the lock list
+// (config.correctableSchema, now name/slug/sourceId/parent-FK-omitted).
+// API (Open5e) sources never apply in place — every edit needs `saveAs`,
+// since a re-import would silently wipe an in-place fix anyway.
 export function createPatchHandler(config: ContentWriteConfig) {
   return async (req: Request, res: Response) => {
     const existing = await config.delegate.findUnique({ where: { id: req.params.id as string } })
@@ -91,6 +95,8 @@ export function createPatchHandler(config: ContentWriteConfig) {
       res.status(404).json(errorResponse('NOT_FOUND', `${config.label} not found`))
       return
     }
+
+    const source = await prisma.source.findUnique({ where: { id: existing.sourceId as string } })
 
     const {
       saveAs,
@@ -115,10 +121,12 @@ export function createPatchHandler(config: ContentWriteConfig) {
       }
     }
 
-    const correctableResult = config.correctableSchema.strict().safeParse(changedFields)
-    if (correctableResult.success) {
-      await respondUpdated(correctableResult.data as Record<string, unknown>)
-      return
+    if (source?.type === 'FILE') {
+      const correctableResult = config.correctableSchema.strict().safeParse(changedFields)
+      if (correctableResult.success) {
+        await respondUpdated(correctableResult.data as Record<string, unknown>)
+        return
+      }
     }
 
     const generalResult = config.partialSchema.strict().safeParse(changedFields)
@@ -134,7 +142,6 @@ export function createPatchHandler(config: ContentWriteConfig) {
     }
     const data = generalResult.data as Record<string, unknown>
 
-    const source = await prisma.source.findUnique({ where: { id: existing.sourceId as string } })
     if (source?.type === 'MANUAL') {
       await respondUpdated(data)
       return

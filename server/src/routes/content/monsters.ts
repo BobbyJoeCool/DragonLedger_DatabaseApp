@@ -6,7 +6,7 @@ import {
   MonsterCorrectableSchema,
   MonsterPartialSchema,
   MonsterSchema,
-} from '../../schemas/content/monster.js'
+} from '@dragonledger/content-types'
 import { envelope, parseJsonFields, parseListQuery, sourceWhere } from './shared.js'
 import { createPatchHandler, createPostHandler, createSimpleDeleteHandler } from './writeHandlers.js'
 

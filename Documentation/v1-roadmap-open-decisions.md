@@ -39,14 +39,15 @@ work — are the actual content.
 | 1 | Schema & Sources | **0** — ready to build | 0 |
 | 2 | Open5e Import | 0 | 3 |
 | 2.5 | Compendium Import | 2 | 5 (one is a blocking prerequisite) |
-| 3 | Content Read API | 1 (shared with #0.1 below) | 0 |
+| 3 | Content Read API | 0 — resolved via #0.1 | 0 |
 | 4 | Content Write API | 1 (6 sub-items) | 0 |
-| 5 | Browse UI | 3 (one shared with #0.1) | 0 |
+| 5 | Browse UI | 2 (one resolved via #0.1) | 0 |
 | 6 | Import UI | **whole phase** — no design session has happened yet | 0 |
-| 7 | Edit & Create UI | 3 (one shared with #0.1) | 0 |
+| 7 | Edit & Create UI | 2 (one resolved via #0.1) | 0 |
 
-Plus **2 cross-cutting decisions** (Section 0) that touch three phases each —
-worth resolving first since Phases 3, 5, and 7 all wait on the same answer.
+Plus **2 cross-cutting decisions** (Section 0), one of which (0.1) is now
+resolved — it touched Phases 3, 5, and 7, all now closed out with the same
+answer. 0.2 remains open.
 
 ---
 
@@ -56,7 +57,15 @@ These two items each show up as an open item in *multiple* phase sections
 below. Resolving them once, here, avoids deciding them three separate times
 (or worse, inconsistently).
 
-### 0.1 `ContentClassOption`'s Browse / API / Form Treatment
+### 0.1 `ContentClassOption`'s Browse / API / Form Treatment — RESOLVED (2026-08-08)
+
+**Decision: Option 2 — nested only.** No 9th top-level Browse tab, no
+standalone `GET /api/class-options` route, no standalone card, no standalone
+form. Class-option data rides along in `GET /api/classes/:id`'s response and
+is edited inline within `ClassForm`. Confirms the existing Phase 5 lean —
+class-options are inherently class-scoped and nobody's described wanting to
+browse Metamagic/Invocations/Maneuvers across all classes at once. This
+closes out 3.1, 5.1, and 7.1 below with the same answer.
 
 **What it is:** `ContentClassOption` is the schema table for Metamagic
 options, Eldritch Invocations, and Maneuvers — themed pools of selectable
@@ -264,12 +273,9 @@ an order.
 
 ### Open Decisions
 
-**3.1 — `ContentClassOption`'s endpoint shape.** Directly tied to Section
-0.1 above. If Section 0.1 resolves to "own top-level Browse tab," this phase
-needs `GET /api/class-options?classId=` as a real standalone route,
-following the same shape as `GET /api/subclasses?classId=`. If it resolves
-to "nested under Class only," no standalone route is needed at all — the
-data just rides along in `GET /api/classes/:id`'s response.
+**3.1 — `ContentClassOption`'s endpoint shape. RESOLVED via Section 0.1:**
+nested under Class only — no standalone route. Class-option data rides
+along in `GET /api/classes/:id`'s response.
 
 Everything else in this phase (the 8 confirmed content types' list/detail
 endpoints, the shared query pattern, the `?fields=name` lightweight mode
@@ -281,42 +287,41 @@ needed by Phase 5's name-index) is fully specified with no open decisions.
 
 ### Open Decisions
 
-**4.1 — Correctable Fields lists for 6 of 7 remaining content types.**
+**4.1 — Correctable Fields, per-type lists — RESOLVED (2026-08-08), rule
+changed from a per-type list to a source-type rule.**
 
-**What it is:** the "Correctable Fields" mechanism lets a user fix a
-parser-derived mistake on an *official* (non-homebrew) entry in place,
-without triggering the full "Save As" homebrew-copy flow. Each content type
-needs its own list of which fields count as "correctable."
+**Old approach (superseded):** the "Correctable Fields" mechanism lets a
+user fix a mistake on an *official* (non-homebrew) entry in place, without
+triggering the full "Save As" homebrew-copy flow. Originally scoped as a
+per-type curated list, criterion "parser-derived/inferred field," applied
+regardless of source type. Only Monster's list was ever actually built
+under this rule (`savingThrows`, `skills`, `damageResistances`,
+`damageImmunities`, `damageVulnerabilities`, `conditionImmunities`).
 
-**The criterion, already established:** a field is correctable if it holds
-a value that was *derived or inferred by the import parser* (something the
-parser could plausibly get wrong) — not a field that's raw authored prose or
-a direct, unambiguous copy from source data. Fixing a parser mistake is
-different in kind from making a rules/balance/flavor change.
+**New rule (resolved):** correctability is now **source-type-based**, not
+per-type-curated:
 
-**What's already done:** only **Monster**'s list is defined —
-`savingThrows`, `skills`, `damageResistances`, `damageImmunities`,
-`damageVulnerabilities`, `conditionImmunities` (explicitly *not* `name`,
-`description`, `alignment`, or the raw actions/traits text, since editing
-those is a content change, not a parser-error fix).
+- `API` (Open5e) entries — no field is correctable in place, ever. Every
+  edit requires `saveAs`. (Open5e refreshes are delete-and-replace, so an
+  in-place fix would just be wiped on the next re-import anyway.)
+- `FILE` (Compendium) entries — every field is correctable in place
+  **except** a fixed lock list: `name`, `slug`, `sourceId`, and the
+  parent-relation FK on Subclass/Subrace (`classId`/`raceId`). Compendium
+  data is known to be imperfect and isn't actively maintained, so the
+  default is now "broadly fixable" rather than "only the fields our own
+  parser might have gotten wrong."
+- `MANUAL` (homebrew) entries — unchanged, always editable in place.
 
-**What's still needed — one list per remaining type, following the same
-criterion:**
-
-| Content Type | Candidate parser-derived fields to consider |
-|---|---|
-| Spell | `components` (collapsed from V/S/M booleans), `classes` (name array), possibly `school` |
-| Class | `primaryAbility` (has a `logic: AND\|OR` inferred from a hardcoded table), `skillChoices`/`armorProfs`/`weaponProfs` (parsed from feature prose), `spellcastingAbility` (hardcoded lookup) |
-| Subclass | Likely very little — mostly raw prose; `extraData.features` parsing quality maybe |
-| Race | `size`/`speed` (extracted via trait-name matching), possibly synthesized subrace-related fields |
-| Subrace | Same pattern as Race, plus whatever Section 2.5.1 above resolves to for the un-columned fields |
-| Background | `proficiencies` (parsed/merged from multiple benefit types or bullet text), `abilityBonuses` |
-| Condition | Very little structured parsing happens here at all — likely nothing correctable, or just `extraData.descriptionSource`/`requestedSource` fallback metadata |
-| Item | `itemType` (overridden by armor category), `damage`/`armorClass` (composed strings), `properties`, `rarity`/`requiresAttunement` (Compendium text-parsed, see Phase 2.5 item #5 above) |
-
-This table is a starting point for discussion, not a final answer — each
-row needs the same short judgment pass Monster already got, ideally in one
-sitting since the criterion is the same throughout.
+**Code impact, not yet applied:** `server/src/routes/content/writeHandlers.ts`'s
+`createPatchHandler` currently checks the correctable schema before looking
+at source type at all — needs reordering so the source-type check gates the
+correctable check. Every content type's `<Type>CorrectableSchema` in
+`server/src/schemas/content/*.ts` needs regenerating from `.omit({ name,
+slug, sourceId, ...FK if present })` instead of the old hand-picked lists.
+See `phase-4-write-api-final-export.md` §4 for the full detail and
+`DevTools/Claude/phase-4.md` for the log entry. **Not yet implemented in
+code as of this decision** — flagged as a follow-up task, pending
+confirmation to proceed with the source-file edits.
 
 ---
 
@@ -324,7 +329,9 @@ sitting since the criterion is the same throughout.
 
 ### Open Decisions
 
-**5.1 — `ContentClassOption`'s Browse treatment.** Tied to Section 0.1.
+**5.1 — `ContentClassOption`'s Browse treatment. RESOLVED via Section 0.1:**
+nested only — no 9th sidebar tab, no standalone card. Surfaced from a
+Class's own detail view.
 
 **5.2 — Per-type results-table column set (8 types).** The results list
 was revised from a card grid to a table, but which columns each of the 8
@@ -400,24 +407,33 @@ session) is:
 
 ### Open Decisions
 
-**7.1 — `ContentClassOption`'s form treatment.** Tied to Section 0.1 —
-own form, or edited within its parent Class's form.
+**7.1 — `ContentClassOption`'s form treatment. RESOLVED via Section 0.1:**
+no standalone `ClassOptionForm` — edited inline within `ClassForm`.
 
 **7.2 — Per-type form field layout (7 of 8 types, plus Subclass/Subrace).**
-Spell already has a complete worked template
-(`phase-7-edit-create-ui-final-export.md` Section 3) — required/nullable
-straight off its Zod schema, one widget per JSON-shaped field, a deferred
-"advanced fields" section for less-common `extraData` keys. The other 7 base
-types (Class, Race, Background, Condition, Item, Monster, Feat) each need
-the same treatment; Subclass and Subrace are expected to mostly reuse their
+**Base pattern now resolved (2026-08-08, see `phase-7-edit-create-ui-final-export.md`
+§1.6):** each `<Type>Form` mirrors its printable card's field grouping/order
+(not a generic top-to-bottom list), stays a separate component from the
+read-only card, appends an editable "Advanced Fields" section for anything
+not on the card, and — for fields on that type's Correctable Fields list
+only — offers an independent per-field save alongside the whole-form
+Save/Save-As button. Spell already has a complete worked template following
+the pre-existing shape (`phase-7-edit-create-ui-final-export.md` Section 3)
+— required/nullable straight off its Zod schema, one widget per JSON-shaped
+field. The other 7 base types (Class, Race, Background, Condition, Item,
+Monster, Feat) still each need their own field-by-field session against
+this base pattern; Subclass and Subrace are expected to mostly reuse their
 parent type's form rather than needing a fully separate build, but that
-hasn't been explicitly confirmed per type.
+hasn't been explicitly confirmed per type. **Note the new dependency:**
+because per-field save is scoped to Correctable Fields, each type's 7.3
+review needs to happen before or during its 7.2 session, not after.
 
-**7.3 — Correctable Fields review, per type.** Same underlying gap as
-Phase 4 Section 4.1 above — this phase's Save/Save-As button behavior reads
-directly off whichever Correctable Fields list each type ends up with, so
-this doesn't need a *separate* decision, just confirmation that Phase 4's
-per-type pass (once done) is what drives the Save button here too.
+**7.3 — Correctable Fields review, per type. Mostly resolved via 4.1's rule
+change.** Since correctability is now source-type-based rather than a
+per-type list, this item shrinks to: per type, confirm the lock list
+(`name`/`slug`/`sourceId`/parent FK) applies cleanly, and confirm
+Subclass/Subrace's per-field save affordance correctly excludes their
+`classId`/`raceId`. No bespoke per-type field-list work remains.
 
 **Explicitly deferred, not blocking v1.0.0:** the create-form's homebrew-
 source default becoming user-configurable (a single global preference, or a

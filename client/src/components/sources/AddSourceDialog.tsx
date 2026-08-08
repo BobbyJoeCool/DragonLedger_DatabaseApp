@@ -5,10 +5,14 @@ import { Modal } from '@/components/ui/Modal'
 
 interface AddSourceDialogProps {
   onClose: () => void
+  // Phase 7's CreateSourceInlineDialog needs the created source back (to
+  // select it immediately in SourcePicker) — optional so the plain
+  // SourcesScreen call site is unaffected.
+  onCreated?: (source: { id: string; name: string }) => void
 }
 
 // Creates a MANUAL source — POST /api/sources (Phase 1.2).
-export function AddSourceDialog({ onClose }: AddSourceDialogProps) {
+export function AddSourceDialog({ onClose, onCreated }: AddSourceDialogProps) {
   const queryClient = useQueryClient()
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -24,7 +28,9 @@ export function AddSourceDialog({ onClose }: AddSourceDialogProps) {
       body: JSON.stringify({ name, description: description || undefined }),
     })
     if (res.ok) {
+      const created = await res.json()
       await queryClient.invalidateQueries({ queryKey: ['sources'] })
+      onCreated?.(created)
       onClose()
     } else {
       const body = await res.json().catch(() => ({}))

@@ -4,14 +4,16 @@ import { prisma } from '../db/client.js'
 import { slugify } from '../utils/slugify.js'
 import { importEvents } from './importEvents.js'
 import { computeChunkSize } from './utils/chunkSize.js'
-import { BackgroundSchema } from '../schemas/content/background.js'
-import { ClassSchema } from '../schemas/content/class.js'
-import { ConditionSchema } from '../schemas/content/condition.js'
-import { FeatSchema } from '../schemas/content/feat.js'
-import { ItemSchema } from '../schemas/content/item.js'
-import { MonsterSchema } from '../schemas/content/monster.js'
-import { RaceSchema } from '../schemas/content/race.js'
-import { SpellSchema } from '../schemas/content/spell.js'
+import {
+  BackgroundSchema,
+  ClassSchema,
+  ConditionSchema,
+  FeatSchema,
+  ItemSchema,
+  MonsterSchema,
+  RaceSchema,
+  SpellSchema,
+} from '@dragonledger/content-types'
 
 // Appendix B (outline.md) — user-authored JSON import. Only the 8 top-level
 // browsable types are supported: Subclass/Subrace/ContentClassOption need FK

@@ -6,7 +6,7 @@ import {
   ConditionCorrectableSchema,
   ConditionPartialSchema,
   ConditionSchema,
-} from '../../schemas/content/condition.js'
+} from '@dragonledger/content-types'
 import { envelope, parseJsonFields, parseListQuery, sourceWhere } from './shared.js'
 import { createPatchHandler, createPostHandler, createSimpleDeleteHandler } from './writeHandlers.js'
 

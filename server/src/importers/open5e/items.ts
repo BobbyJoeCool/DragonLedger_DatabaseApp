@@ -1,5 +1,5 @@
 import type { Prisma } from '@prisma/client'
-import { ItemSchema } from '../../schemas/content/item.js'
+import { ItemSchema } from '@dragonledger/content-types'
 import { toJsonString } from '../utils/json.js'
 import { slugFromKey } from './slug.js'
 import type { Open5eItem, Open5eMagicItem, Open5eWeaponProperty } from './types.js'

@@ -1,5 +1,5 @@
 import type { Prisma } from '@prisma/client'
-import { ConditionSchema } from '../../schemas/content/condition.js'
+import { ConditionSchema } from '@dragonledger/content-types'
 import { toJsonString } from '../utils/json.js'
 import { slugFromKey } from './slug.js'
 import type { Open5eCondition } from './types.js'

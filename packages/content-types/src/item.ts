@@ -1,6 +1,8 @@
 import { z } from 'zod'
 
-const propertySchema = z.object({
+// Exported so PropertyListWidget (client) can type its rows against the
+// same shape the schema enforces.
+export const propertySchema = z.object({
   name: z.string().min(1),
   detail: z.string().nullable().optional(),
 })
@@ -23,18 +25,14 @@ export const ItemSchema = z.object({
 
 export const ItemPartialSchema = ItemSchema.partial()
 
-// Correctable subset: rarity/requiresAttunement are parsed from the
-// Compendium <detail> tag (confirmed reliable on 98.7% of magic items, not
-// 100% — real parser misses possible on the residual). damage is composed
-// from dmg1/dmgType. properties is unwrapped from a nested
-// properties[].property.name shape (a real correction found in Phase 2) —
-// all four are parser output, not a direct source copy. itemType/cost/weight/
-// armorClass are excluded as direct copies; description is raw prose.
-export const ItemCorrectableSchema = ItemSchema.pick({
-  rarity: true,
-  requiresAttunement: true,
-  damage: true,
-  properties: true,
-}).strict()
+// Correctable subset: source-type-based (see phase-4-write-api-final-export.md
+// §4). Every field is correctable except the fixed lock list (name/slug/
+// sourceId).
+export const ItemCorrectableSchema = ItemSchema.omit({
+  name: true,
+  slug: true,
+  sourceId: true,
+}).partial().strict()
 
 export type Item = z.infer<typeof ItemSchema>
+export type ItemProperty = z.infer<typeof propertySchema>

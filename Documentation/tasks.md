@@ -530,15 +530,20 @@ outline.md's Open Questions appendix — resolve that first rather than guessing
 
 ## Phase 7 — Edit & Create UI
 
-1. [ ] Set up `@dragonledger/content-types` workspace package — move Zod
+1. [x] Set up `@dragonledger/content-types` workspace package — move Zod
        schemas here first; both client and server code depend on it going forward
-2. [ ] `npm install react-hook-form` + its Zod resolver in `client/`
-3. [ ] Build `FixedChoiceGrantWidget` first — most-reused, several other widgets compose it
-4. [ ] Build remaining shared widgets: `AbilityScoreGrid`, `SpeedWidget`,
+2. [x] `npm install react-hook-form` + its Zod resolver in `client/`
+3. [x] Build `FixedChoiceGrantWidget` first — most-reused, several other widgets compose it
+4. [x] Build remaining shared widgets: `AbilityScoreGrid`, `SpeedWidget`,
        `ActionListWidget`, `PropertyListWidget`, `TraitListWidget`,
        `ComponentsWidget`, `ResistanceListWidget`, `SpellcastingWidget`
-5. [ ] Build `SourcePicker` (defaults to `homebrew`), `SaveButton`/`SaveAsPrompt`
-       (wired to each type's Correctable Fields subset), `UnsavedChangesGuard`, `CreateSourceInlineDialog`
+5. [x] Build `SourcePicker` (defaults to `homebrew`), `SaveButton`/`SaveAsPrompt`
+       (wired to each type's Correctable Fields subset), `UnsavedChangesGuard`, `CreateSourceInlineDialog`.
+       Also applied, as a prerequisite: the source-type-based Correctable
+       Fields rule from `v1-roadmap-open-decisions.md` §4.1 (regenerated
+       every `<Type>CorrectableSchema`, reordered `createPatchHandler` to
+       check source type first) — SaveButton needed the real rule, not the
+       stale per-type curated lists.
 6. [ ] **Do not attempt all 8 (or 10, counting Subclass/Subrace) forms in one
        pass.** Each needs its own short design session (field layout,
        required/nullable off the Zod schema, Correctable Fields review,

@@ -176,13 +176,50 @@ Request body: `{ confirmName: "<source's exact name>" }`.
 | `confirmName` missing or mismatched | 400 | `{ error: { code: "CONFIRM_NAME_MISMATCH", message } }` |
 | Source not found | 404 | `{ error: { code: "NOT_FOUND", message } }` |
 
-## 4. Validation Approach: Correctable Fields
+## 4. Validation Approach: Correctable Fields — REVISED (2026-08-08)
 
-Each content type gets, in addition to its full Zod schema (from Phase 2) and its `.partial()` variant, a third schema: a `.pick()`'d subset naming fields that are safe to edit in place on an official entry without triggering the `saveAs` decision.
+**Superseded rule.** The original per-type, parser-derived-fields criterion
+below (kept for historical context) has been replaced by a **source-type-based
+rule**, decided during a Phase 7 design session once it became clear the two
+importer refresh semantics (Section "Data Model Overview" in `outline.md`)
+map directly onto what's safe to edit in place:
 
-**Criteria for "correctable":** a field holds a value that was *derived or inferred by our own import parser* (something the parser could plausibly get wrong) — not a field that's raw authored prose or a direct, unambiguous copy from the source data. Correcting a parser mistake is different in kind from making a rules/balance/flavor change.
+- **`API` sources (Open5e):** refreshed by delete-and-replace. **No field is
+  correctable in place, ever.** Any edit to an Open5e-sourced entry requires
+  `saveAs` — there's no point letting someone directly patch a field that a
+  future refresh will just overwrite anyway; the correction needs to live on
+  a homebrew copy or it won't survive.
+- **`FILE` sources (Compendium):** additive-only, never-overwritten on
+  re-import — a direct correction here actually sticks, and the Compendium
+  source data is known to be imperfect and not actively maintained. **Every
+  field is correctable in place except a fixed lock list** (below). This
+  replaces the old narrow per-type "parser-derived fields only" list with a
+  much broader default — the Compendium is expected to have real content
+  errors throughout, not just in parser-inferred fields.
+- **`MANUAL` sources (homebrew):** unchanged — already always editable in
+  place (Section 3, `PATCH`'s existing MANUAL-passthrough branch). Not
+  affected by this section.
 
-Representative example (Monster):
+**Lock list — excluded from "correctable" on every content type, regardless
+of source type:**
+
+- `name` — the primary display identity; also a practical guard against a
+  correction accidentally masquerading as a rename.
+- `slug` — the `(sourceId, slug)` re-import dedup key (`prisma/schema.prisma`).
+  Not expected to be a form field at all, but excluded explicitly so it's
+  never accidentally included in a generated correctable-schema pick.
+- `sourceId` — provenance/structure, not content. Reassigning an entry's
+  Source is what `saveAs`/`targetSourceId` is for, not an in-place "fix."
+- `ContentSubclass.classId` and `ContentSubrace.raceId` — parent-relation
+  FKs. Reparenting a Subclass/Subrace to a different Class/Race is a
+  structural change, not a content correction.
+
+Every other field on every content type — including things previously left
+off the old per-type lists, like `itemType`, `damage`/`armorClass`,
+`size`/`speed`, `primaryAbility`, `description`, raw `actions`/`traits`
+text — is now correctable in place **for `FILE`-sourced entries only**.
+
+Representative example (Monster), replacing the old narrow 6-field pick:
 
 ```typescript
 // server/src/schemas/content/monster.schema.ts
@@ -215,35 +252,65 @@ export const MonsterSchema = z.object({
 
 export const MonsterPartialSchema = MonsterSchema.partial();
 
-// Correctable subset: parsed/inferred structured data, not raw authored text.
-// name, description, alignment, and the raw actions/traits text are deliberately excluded —
-// editing those is a rules/flavor change, not a parser-error fix.
-export const MonsterCorrectableSchema = MonsterSchema.pick({
-  savingThrows: true,
-  skills: true,
-  damageResistances: true,
-  damageImmunities: true,
-  damageVulnerabilities: true,
-  conditionImmunities: true,
-  // extraData.spellcasting's spell-name matches are also correctable, but since
-  // extraData is one opaque JSON string, that check happens as a sub-parse inside
-  // the route handler rather than as a top-level picked field — see implementation
-  // note below.
+// Correctable subset, revised rule: every field except the fixed lock list
+// (name/slug/sourceId — no classId/raceId on Monster). Applies only when
+// the entry's Source.type === 'FILE'; see route logic below.
+export const MonsterCorrectableSchema = MonsterSchema.omit({
+  name: true,
+  slug: true,
+  sourceId: true,
 }).strict();
 ```
 
-Route logic for `PATCH`:
+Route logic for `PATCH` (revised — gates the correctable check on source type
+before applying it, where it previously ran unconditionally):
 
 ```typescript
-function isFullyCorrectable(changedFields: Record<string, unknown>, correctableSchema: z.ZodObject<any>): boolean {
+function isFullyCorrectable(
+  changedFields: Record<string, unknown>,
+  correctableSchema: z.ZodObject<any>,
+  sourceType: 'API' | 'FILE' | 'MANUAL',
+): boolean {
+  if (sourceType !== 'FILE') return false; // API: never; MANUAL: handled by its own passthrough branch, doesn't need this check
   const result = correctableSchema.safeParse(changedFields);
   return result.success;
 }
 ```
 
-If `isFullyCorrectable` returns `true` for the exact set of fields present in the request body, apply the patch in place with no `saveAs` requirement, regardless of the entry's source type. Otherwise, fall through to the standard `saveAs` flow.
+If `isFullyCorrectable` returns `true` for the exact set of fields present in
+the request body, apply the patch in place with no `saveAs` requirement.
+Otherwise, fall through to the standard `saveAs` flow (which still short-
+circuits to in-place for `MANUAL` entries, per the existing passthrough
+branch).
 
-**Not yet specified:** the exact correctable-field list for the other six content types (Spell, Class/Subclass, Race/Subrace, Background, Condition, Item). This is a genuine per-type judgment call — flagged as a TODO for whoever implements each schema module, likely worth a short dedicated pass rather than guessing generically. The Monster example above is a template, not a copy-paste target.
+**Code impact — not yet applied, flagged for implementation:** the live
+`server/src/routes/content/writeHandlers.ts` `createPatchHandler` currently
+runs the correctable-schema check *before* looking up the entry's source at
+all (checks the schema, then falls through to a separate source-type lookup
+only after a non-correctable result). That ordering needs to change so the
+source-type check gates the correctable check as shown above. Every content
+type's `<Type>CorrectableSchema` (`server/src/schemas/content/*.ts`) also
+needs to be regenerated from `.omit({ name, slug, sourceId, ...FK if present })`
+instead of the old hand-picked field lists. See `DevTools/Claude/phase-4.md`
+for the full list of what was previously picked per type, now superseded.
+
+---
+
+### Historical: Original Per-Type Criterion (superseded, kept for context)
+
+The original schema-and-handler build (Phase 4, shipped) used a narrower
+rule: a field was "correctable" only if its value was *derived or inferred
+by the import parser* (something the parser could plausibly get wrong) —
+applied **regardless of the entry's source type**. This produced a short,
+type-specific field list (Spell/Condition: none; Class: `hitDie`,
+`primaryAbility`, `savingThrows`, `armorProfs`, `weaponProfs`,
+`skillChoices`, `spellcastingAbility`; Subclass/Subrace/Race/ClassOption:
+their parent-link field; Background: `proficiencies`, `abilityBonuses`;
+Item: `rarity`, `requiresAttunement`, `damage`, `properties`; Feat:
+`category`; Monster: the 6 fields shown in the example below prior to this
+revision). This list and its "regardless of source type" behavior are now
+superseded by the source-type-based rule above — kept here only so the
+reasoning isn't lost, not as a current spec.
 
 ## 5. Implementation Instructions for Claude Code
 

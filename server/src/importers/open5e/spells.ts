@@ -1,5 +1,5 @@
 import type { Prisma } from '@prisma/client'
-import { SpellSchema } from '../../schemas/content/spell.js'
+import { SpellSchema } from '@dragonledger/content-types'
 import { scalingTriggerForSpellLevel, type SpellScalingEntry } from '../shared/spellScaling.js'
 import { toJsonString } from '../utils/json.js'
 import { slugFromKey } from './slug.js'

@@ -6,7 +6,7 @@ import {
   SubclassCorrectableSchema,
   SubclassPartialSchema,
   SubclassSchema,
-} from '../../schemas/content/class.js'
+} from '@dragonledger/content-types'
 import { envelope, parseJsonFields, parseListQuery, sourceWhere } from './shared.js'
 import { createPatchHandler, createPostHandler, createSimpleDeleteHandler } from './writeHandlers.js'
 

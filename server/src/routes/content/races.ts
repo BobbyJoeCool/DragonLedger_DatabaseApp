@@ -2,7 +2,7 @@ import { Router } from 'express'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '../../db/client.js'
 import { requireAuth } from '../../middleware/auth.js'
-import { RaceCorrectableSchema, RacePartialSchema, RaceSchema } from '../../schemas/content/race.js'
+import { RaceCorrectableSchema, RacePartialSchema, RaceSchema } from '@dragonledger/content-types'
 import { errorResponse } from '../../utils/errorResponse.js'
 import {
   classifyDependents,

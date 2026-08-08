@@ -1,6 +1,8 @@
 import { z } from 'zod'
 
-const actionSchema = z.object({
+// Exported so ActionListWidget (client) can type its rows against the same
+// shape the schema enforces.
+export const actionSchema = z.object({
   name: z.string().min(1),
   description: z.string(),
   actionType: z.enum(['action', 'bonus', 'reaction', 'mythic']),
@@ -12,7 +14,8 @@ const actionSchema = z.object({
 // importers/shared/resistance.ts and schema-expansion-design-handoff.md §1.1.
 // All three fields always present (never optional, never a bare string) so
 // a downstream consumer never has to branch on which source wrote the row.
-const resistanceEntrySchema = z.object({
+// Exported for ResistanceListWidget (client).
+export const resistanceEntrySchema = z.object({
   types: z.array(z.string()).min(1),
   nonmagical: z.boolean(),
   bypassedBy: z.string().nullable(),
@@ -48,20 +51,17 @@ export const MonsterSchema = z.object({
 
 export const MonsterPartialSchema = MonsterSchema.partial()
 
-// Correctable subset: parsed/inferred structured data, not raw authored
-// text. name, description, alignment, and the raw actions/traits text are
-// deliberately excluded — editing those is a rules/flavor change, not a
-// parser-error fix. extraData.spellcasting's spell-name matches are also
-// correctable in principle, but since extraData is one opaque JSON string,
-// per-key correction there is deferred, not built this pass (see
-// phase-4-write-api-final-export.md §4).
-export const MonsterCorrectableSchema = MonsterSchema.pick({
-  savingThrows: true,
-  skills: true,
-  damageResistances: true,
-  damageImmunities: true,
-  damageVulnerabilities: true,
-  conditionImmunities: true,
-}).strict()
+// Correctable subset: source-type-based, not a per-field curated list (see
+// phase-4-write-api-final-export.md §4) — this was the one type that ever
+// got a curated list under the old rule; that list is now superseded.
+// Every field is correctable except the fixed lock list (name/slug/
+// sourceId).
+export const MonsterCorrectableSchema = MonsterSchema.omit({
+  name: true,
+  slug: true,
+  sourceId: true,
+}).partial().strict()
 
 export type Monster = z.infer<typeof MonsterSchema>
+export type MonsterAction = z.infer<typeof actionSchema>
+export type ResistanceEntry = z.infer<typeof resistanceEntrySchema>

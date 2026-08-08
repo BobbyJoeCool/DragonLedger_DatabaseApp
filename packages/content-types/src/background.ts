@@ -33,15 +33,15 @@ export const BackgroundSchema = z.object({
 
 export const BackgroundPartialSchema = BackgroundSchema.partial()
 
-// Correctable subset: proficiencies/abilityBonuses are parsed from free
-// prose bullet points ("Choose one kind of Gaming Set") into the Fixed/Choice
-// Grant Shape — a real, known gap area (extraData.proficiencyMismatch exists
-// for exactly this reason). feature[] is mostly empty on 2024-style
-// backgrounds and, when populated, is a direct {name,description} copy, not
-// an inference.
-export const BackgroundCorrectableSchema = BackgroundSchema.pick({
-  proficiencies: true,
-  abilityBonuses: true,
-}).strict()
+// Correctable subset: source-type-based, not a per-field curated list (see
+// phase-4-write-api-final-export.md §4). Every field is correctable except
+// the fixed lock list (name/slug/sourceId) — whether this schema actually
+// applies to a given row depends on that row's Source.type, decided in
+// writeHandlers.ts, not here.
+export const BackgroundCorrectableSchema = BackgroundSchema.omit({
+  name: true,
+  slug: true,
+  sourceId: true,
+}).partial().strict()
 
 export type Background = z.infer<typeof BackgroundSchema>

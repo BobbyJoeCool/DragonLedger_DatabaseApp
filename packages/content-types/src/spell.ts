@@ -21,14 +21,13 @@ export const SpellSchema = z.object({
 
 export const SpellPartialSchema = SpellSchema.partial()
 
-// Correctable subset: nothing at the top level qualifies. Spell's actual
-// parser-inferred content (scaling, damageRoll/damageTypes, savingThrow,
-// attackRoll, materialConsumed) all lives inside the single opaque
-// `extraData` blob, which — per Monster's own reference implementation —
-// isn't picked as a whole; per-key correction there is deferred, not built
-// this pass. level/school/castingTime/range/components/duration/
-// concentration/ritual/classes are direct copies of source fields, not
-// parser inferences, so they're excluded too.
-export const SpellCorrectableSchema = SpellSchema.pick({}).strict()
+// Correctable subset: source-type-based (see phase-4-write-api-final-export.md
+// §4). Every field is correctable except the fixed lock list (name/slug/
+// sourceId) — a real change from the old rule, which had this at zero.
+export const SpellCorrectableSchema = SpellSchema.omit({
+  name: true,
+  slug: true,
+  sourceId: true,
+}).partial().strict()
 
 export type Spell = z.infer<typeof SpellSchema>

@@ -1,5 +1,5 @@
 import type { Prisma } from '@prisma/client'
-import { ClassSchema, SubclassSchema } from '../../schemas/content/class.js'
+import { ClassSchema, SubclassSchema } from '@dragonledger/content-types'
 import { ABILITY_NAME_TO_CODE } from '../open5e/abilities.js'
 import { splitOptionList } from '../open5e/proseGrant.js'
 import { slugify } from '../../utils/slugify.js'
