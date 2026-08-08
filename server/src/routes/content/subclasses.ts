@@ -7,7 +7,7 @@ import {
   SubclassPartialSchema,
   SubclassSchema,
 } from '../../schemas/content/class.js'
-import { envelope, parseJsonFields, parseListQuery } from './shared.js'
+import { envelope, parseJsonFields, parseListQuery, sourceWhere } from './shared.js'
 import { createPatchHandler, createPostHandler, createSimpleDeleteHandler } from './writeHandlers.js'
 
 export const subclassesRouter = Router()
@@ -25,11 +25,11 @@ const writeConfig = {
 
 // GET /api/subclasses — reached from a Class's card. filters: classId, source, q
 subclassesRouter.get('/', async (req, res) => {
-  const { source, q, page, limit, skip, fieldsName } = parseListQuery(req)
+  const { sourceIds, q, page, limit, skip, fieldsName } = parseListQuery(req)
   const { classId } = req.query as Record<string, string | undefined>
 
   const where: Prisma.ContentSubclassWhereInput = {
-    ...(source ? { sourceId: source } : {}),
+    ...sourceWhere(sourceIds),
     ...(q ? { name: { contains: q } } : {}),
     ...(classId ? { classId } : {}),
   }

@@ -3,7 +3,7 @@ import type { Prisma } from '@prisma/client'
 import { prisma } from '../../db/client.js'
 import { requireAuth } from '../../middleware/auth.js'
 import { FeatCorrectableSchema, FeatPartialSchema, FeatSchema } from '../../schemas/content/feat.js'
-import { envelope, parseJsonFields, parseListQuery } from './shared.js'
+import { envelope, parseJsonFields, parseListQuery, sourceWhere } from './shared.js'
 import { createPatchHandler, createPostHandler, createSimpleDeleteHandler } from './writeHandlers.js'
 
 export const featsRouter = Router()
@@ -21,11 +21,11 @@ const writeConfig = {
 
 // GET /api/feats — filters: category, source, q
 featsRouter.get('/', async (req, res) => {
-  const { source, q, page, limit, skip, fieldsName } = parseListQuery(req)
+  const { sourceIds, q, page, limit, skip, fieldsName } = parseListQuery(req)
   const { category } = req.query as Record<string, string | undefined>
 
   const where: Prisma.ContentFeatWhereInput = {
-    ...(source ? { sourceId: source } : {}),
+    ...sourceWhere(sourceIds),
     ...(q ? { name: { contains: q } } : {}),
     ...(category ? { category } : {}),
   }

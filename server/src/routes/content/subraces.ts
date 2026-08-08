@@ -7,7 +7,7 @@ import {
   SubracePartialSchema,
   SubraceSchema,
 } from '../../schemas/content/race.js'
-import { envelope, parseJsonFields, parseListQuery } from './shared.js'
+import { envelope, parseJsonFields, parseListQuery, sourceWhere } from './shared.js'
 import { createPatchHandler, createPostHandler, createSimpleDeleteHandler } from './writeHandlers.js'
 
 export const subracesRouter = Router()
@@ -25,11 +25,11 @@ const writeConfig = {
 
 // GET /api/subraces — reached from a Race's card. filters: raceId, source, q
 subracesRouter.get('/', async (req, res) => {
-  const { source, q, page, limit, skip, fieldsName } = parseListQuery(req)
+  const { sourceIds, q, page, limit, skip, fieldsName } = parseListQuery(req)
   const { raceId } = req.query as Record<string, string | undefined>
 
   const where: Prisma.ContentSubraceWhereInput = {
-    ...(source ? { sourceId: source } : {}),
+    ...sourceWhere(sourceIds),
     ...(q ? { name: { contains: q } } : {}),
     ...(raceId ? { raceId } : {}),
   }

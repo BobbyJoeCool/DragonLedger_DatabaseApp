@@ -9,6 +9,7 @@ import {
   envelope,
   parseJsonFields,
   parseListQuery,
+  sourceWhere,
   toDependentEntries,
 } from './shared.js'
 import { createPatchHandler, createPostHandler } from './writeHandlers.js'
@@ -28,10 +29,10 @@ const writeConfig = {
 
 // GET /api/races — filters: source, q
 racesRouter.get('/', async (req, res) => {
-  const { source, q, page, limit, skip, fieldsName } = parseListQuery(req)
+  const { sourceIds, q, page, limit, skip, fieldsName } = parseListQuery(req)
 
   const where: Prisma.ContentRaceWhereInput = {
-    ...(source ? { sourceId: source } : {}),
+    ...sourceWhere(sourceIds),
     ...(q ? { name: { contains: q } } : {}),
   }
 

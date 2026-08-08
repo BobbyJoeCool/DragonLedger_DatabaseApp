@@ -76,6 +76,18 @@ describe('Content Read API — shared envelope', () => {
     expect(res.status).toBe(200)
     expect(res.body.total).toBeGreaterThan(0)
   })
+
+  it('?source= repeated (multi-select, Phase 5) unions matches across sources', async () => {
+    const single = await request(app).get('/api/spells?source=open5e-srd-2024')
+    const homebrewOnly = await request(app).get('/api/spells?source=homebrew')
+    const both = await request(app).get(
+      '/api/spells?source=open5e-srd-2024&source=homebrew',
+    )
+    const passed = both.body.total === single.body.total + homebrewOnly.body.total
+    logResult('GET /api/spells?source= repeated', both, passed)
+    expect(both.status).toBe(200)
+    expect(both.body.total).toBe(single.body.total + homebrewOnly.body.total)
+  })
 })
 
 describe('Content Read API — per-type filters', () => {

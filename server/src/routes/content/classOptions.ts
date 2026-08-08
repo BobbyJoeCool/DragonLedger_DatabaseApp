@@ -7,7 +7,7 @@ import {
   ClassOptionPartialSchema,
   ClassOptionSchema,
 } from '../../schemas/content/classOption.js'
-import { envelope, parseJsonFields, parseListQuery } from './shared.js'
+import { envelope, parseJsonFields, parseListQuery, sourceWhere } from './shared.js'
 import { createPatchHandler, createPostHandler, createSimpleDeleteHandler } from './writeHandlers.js'
 
 export const classOptionsRouter = Router()
@@ -28,11 +28,11 @@ const writeConfig = {
 // under Class) per the resolved Phase 3 open question — most live rows
 // currently have classId: null (general options not yet linked to a class).
 classOptionsRouter.get('/', async (req, res) => {
-  const { source, q, page, limit, skip, fieldsName } = parseListQuery(req)
+  const { sourceIds, q, page, limit, skip, fieldsName } = parseListQuery(req)
   const { classId, pool } = req.query as Record<string, string | undefined>
 
   const where: Prisma.ContentClassOptionWhereInput = {
-    ...(source ? { sourceId: source } : {}),
+    ...sourceWhere(sourceIds),
     ...(q ? { name: { contains: q } } : {}),
     ...(classId ? { classId } : {}),
     ...(pool ? { pool } : {}),

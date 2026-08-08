@@ -7,7 +7,7 @@ import {
   MonsterPartialSchema,
   MonsterSchema,
 } from '../../schemas/content/monster.js'
-import { envelope, parseJsonFields, parseListQuery } from './shared.js'
+import { envelope, parseJsonFields, parseListQuery, sourceWhere } from './shared.js'
 import { createPatchHandler, createPostHandler, createSimpleDeleteHandler } from './writeHandlers.js'
 
 export const monstersRouter = Router()
@@ -37,11 +37,11 @@ const writeConfig = {
 
 // GET /api/monsters — filters: cr, type, source, q
 monstersRouter.get('/', async (req, res) => {
-  const { source, q, page, limit, skip, fieldsName } = parseListQuery(req)
+  const { sourceIds, q, page, limit, skip, fieldsName } = parseListQuery(req)
   const { cr, type } = req.query as Record<string, string | undefined>
 
   const where: Prisma.ContentMonsterWhereInput = {
-    ...(source ? { sourceId: source } : {}),
+    ...sourceWhere(sourceIds),
     ...(q ? { name: { contains: q } } : {}),
     // challengeRating is a String to hold fractions like "1/8" — exact match, not numeric comparison.
     ...(cr ? { challengeRating: cr } : {}),

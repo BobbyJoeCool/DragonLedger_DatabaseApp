@@ -3,7 +3,7 @@ import type { Prisma } from '@prisma/client'
 import { prisma } from '../../db/client.js'
 import { requireAuth } from '../../middleware/auth.js'
 import { SpellCorrectableSchema, SpellPartialSchema, SpellSchema } from '../../schemas/content/spell.js'
-import { envelope, parseJsonFields, parseListQuery } from './shared.js'
+import { envelope, parseJsonFields, parseListQuery, sourceWhere } from './shared.js'
 import { createPatchHandler, createPostHandler, createSimpleDeleteHandler } from './writeHandlers.js'
 
 export const spellsRouter = Router()
@@ -21,7 +21,7 @@ const writeConfig = {
 
 // GET /api/spells — filters: source, q, level, school, class
 spellsRouter.get('/', async (req, res) => {
-  const { source, q, page, limit, skip, fieldsName } = parseListQuery(req)
+  const { sourceIds, q, page, limit, skip, fieldsName } = parseListQuery(req)
   const { level, school, class: className } = req.query as Record<string, string | undefined>
 
   if (level !== undefined && Number.isNaN(Number.parseInt(level, 10))) {
@@ -30,7 +30,7 @@ spellsRouter.get('/', async (req, res) => {
   }
 
   const where: Prisma.ContentSpellWhereInput = {
-    ...(source ? { sourceId: source } : {}),
+    ...sourceWhere(sourceIds),
     ...(q ? { name: { contains: q } } : {}),
     ...(level !== undefined ? { level: Number.parseInt(level, 10) } : {}),
     ...(school ? { school } : {}),

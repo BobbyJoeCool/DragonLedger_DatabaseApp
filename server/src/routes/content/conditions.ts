@@ -7,7 +7,7 @@ import {
   ConditionPartialSchema,
   ConditionSchema,
 } from '../../schemas/content/condition.js'
-import { envelope, parseJsonFields, parseListQuery } from './shared.js'
+import { envelope, parseJsonFields, parseListQuery, sourceWhere } from './shared.js'
 import { createPatchHandler, createPostHandler, createSimpleDeleteHandler } from './writeHandlers.js'
 
 export const conditionsRouter = Router()
@@ -25,10 +25,10 @@ const writeConfig = {
 
 // GET /api/conditions — filters: source, q
 conditionsRouter.get('/', async (req, res) => {
-  const { source, q, page, limit, skip, fieldsName } = parseListQuery(req)
+  const { sourceIds, q, page, limit, skip, fieldsName } = parseListQuery(req)
 
   const where: Prisma.ContentConditionWhereInput = {
-    ...(source ? { sourceId: source } : {}),
+    ...sourceWhere(sourceIds),
     ...(q ? { name: { contains: q } } : {}),
   }
 

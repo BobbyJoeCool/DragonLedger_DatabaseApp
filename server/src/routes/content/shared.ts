@@ -7,7 +7,7 @@ export const DEFAULT_LIMIT = 50
 export const MAX_LIMIT = 200
 
 export interface ListQuery {
-  source?: string
+  sourceIds: string[]
   q?: string
   page: number
   limit: number
@@ -18,24 +18,40 @@ export interface ListQuery {
 // Shared across every content type per outline.md §3.1: ?source=, ?q=,
 // ?page=/?limit= (envelope pagination), and ?fields=name (lightweight
 // {id,name}[] mode powering Phase 5's position-bar name index).
+//
+// ?source= accepts multiple values (repeated: ?source=a&source=b — Express's
+// default qs parser already arrays these) — Phase 5's SourceMultiSelect
+// needs "any of these N sources", not just one. A single value still works
+// (normalized to a 1-element array), so this is backwards compatible with
+// Phase 3/4's existing single-source usage.
 export function parseListQuery(req: Request): ListQuery {
-  const query = req.query as Record<string, string | undefined>
+  const query = req.query as Record<string, string | string[] | undefined>
 
-  const rawPage = Number.parseInt(query.page ?? '1', 10)
+  const rawPage = Number.parseInt((query.page as string | undefined) ?? '1', 10)
   const page = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1
 
-  const rawLimit = Number.parseInt(query.limit ?? String(DEFAULT_LIMIT), 10)
+  const rawLimit = Number.parseInt((query.limit as string | undefined) ?? String(DEFAULT_LIMIT), 10)
   const limit =
     Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, MAX_LIMIT) : DEFAULT_LIMIT
 
+  const source = query.source
+  const sourceIds = Array.isArray(source) ? source : source ? [source] : []
+
   return {
-    source: query.source || undefined,
-    q: query.q || undefined,
+    sourceIds,
+    q: (query.q as string | undefined) || undefined,
     page,
     limit,
     skip: (page - 1) * limit,
     fieldsName: query.fields === 'name',
   }
+}
+
+// Shared `sourceId` where-fragment: filters to any of the given ids, or no
+// filter at all when the list is empty (SourceMultiSelect's "all checked"
+// default omits ?source= entirely rather than listing every id).
+export function sourceWhere(sourceIds: string[]): { sourceId?: { in: string[] } } {
+  return sourceIds.length > 0 ? { sourceId: { in: sourceIds } } : {}
 }
 
 export function envelope<T>(data: T[], total: number, page: number, limit: number) {

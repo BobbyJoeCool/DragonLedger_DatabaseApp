@@ -7,7 +7,7 @@ import {
   BackgroundPartialSchema,
   BackgroundSchema,
 } from '../../schemas/content/background.js'
-import { envelope, parseJsonFields, parseListQuery } from './shared.js'
+import { envelope, parseJsonFields, parseListQuery, sourceWhere } from './shared.js'
 import { createPatchHandler, createPostHandler, createSimpleDeleteHandler } from './writeHandlers.js'
 
 export const backgroundsRouter = Router()
@@ -25,10 +25,10 @@ const writeConfig = {
 
 // GET /api/backgrounds — filters: source, q
 backgroundsRouter.get('/', async (req, res) => {
-  const { source, q, page, limit, skip, fieldsName } = parseListQuery(req)
+  const { sourceIds, q, page, limit, skip, fieldsName } = parseListQuery(req)
 
   const where: Prisma.ContentBackgroundWhereInput = {
-    ...(source ? { sourceId: source } : {}),
+    ...sourceWhere(sourceIds),
     ...(q ? { name: { contains: q } } : {}),
   }
 

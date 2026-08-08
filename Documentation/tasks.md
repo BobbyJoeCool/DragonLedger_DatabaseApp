@@ -430,26 +430,53 @@ outline.md's Open Questions appendix — resolve that first rather than guessing
 
 ## Phase 5 — Browse UI
 
-1. [ ] `npm install @tanstack/react-query @tanstack/react-virtual` in `client/`
-2. [ ] Set up `QueryClientProvider` at the app root
-3. [ ] Confirm Phase 3's `?fields=name` support exists before building the name-index hook
-4. [ ] Build `useContentList`, `useContentNameIndex`, `useContentDetail` under `client/src/hooks/`
-5. [ ] Build `SourceMultiSelect` (all-checked default) and `NameSearchInput` — shared across all 8 filter bars
-6. [ ] Build the 8 `<Type>FilterBar` components under `client/src/components/filters/`
+> Full rationale and every resolved decision: `DevTools/Claude/phase-5.md`.
+
+1. [x] `npm install @tanstack/react-query @tanstack/react-virtual` in `client/`
+2. [x] Set up `QueryClientProvider` at the app root
+3. [x] Confirm Phase 3's `?fields=name` support exists before building the name-index hook
+4. [x] Build `useContentList`, `useContentNameIndex`, `useContentDetail` under `client/src/hooks/`
+5. [x] Build `SourceMultiSelect` (all-checked default) and `NameSearchInput` — shared across all 8 filter bars.
+       **Extended beyond the original design:** the live db has 1,265 `Source`
+       rows (one per Compendium book), so `SourceMultiSelect` also got an
+       in-popover search filter — a plain unfiltered checkbox list at that
+       scale would be unusable. Pure rendering-scope addition, doesn't touch
+       the query shape.
+6. [x] Build the 8 `<Type>FilterBar` components under `client/src/components/filters/`
        (Spell, Class, Race, Background, Condition, Item, Monster, **Feat**)
-7. [ ] Build `ResultsTable` + `PositionBar` (revised from a card grid — see
+7. [x] Build `ResultsTable` + `PositionBar` (revised from a card grid — see
        `phase-5-browse-ui-final-export.md` §1.7) — the most involved piece of
        this phase; budget real time for scroll-math/jank. Placeholder `<Type>Row` for now.
-8. [ ] Build `BrowseScreen` — sidebar, per-type `BrowseState`, filter bar, results table
-9. [ ] Build `DetailScreen` — `Breadcrumb`, `SourceBadge`, placeholder
-       `<Type>DetailFields`, auth-gated Edit/Delete (Delete wired to Phase 4's `{ confirm: true }` contract)
-10. [ ] Verify: all 8 content types preserve independent filter state within a
-        session; position-bar drag shows live names without full-record
-        fetches; jump-to-position renders correctly without fetching everything in between
+       **Real bug found and fixed via manual browser verification** (not just
+       typecheck): jump-to-position initially snapped back to the top instead
+       of landing on the target, because changing the query's anchor page
+       transiently collapsed `total` to 0 mid-transition. Fixed with
+       `placeholderData: keepPreviousData`.
+8. [x] Build `BrowseScreen` — sidebar, per-type `BrowseState`, filter bar, results table
+9. [x] Build `DetailScreen` — `Breadcrumb`, `SourceBadge`, placeholder
+       `<Type>DetailFields`, auth-gated Edit/Delete (Delete wired to Phase 4's `{ confirm: true }` contract,
+       full two-step confirm flow including Class/Race's dependents preview)
+10. [x] Verified via Playwright screenshots against the real dev server (no
+        client-side automated test runner exists yet — flagged as a real gap,
+        not addressed this phase): all 8 content types preserve independent
+        filter state within a session; position-bar drag shows live names
+        (from the name index, confirmed via screenshot) without full-record
+        fetches; jump-to-position renders correctly without fetching
+        everything in between (confirmed after the bug fix above).
 11. [ ] **Do not consider Phase 5 fully complete** until the dedicated
         table-row column design and the `<Type>DetailFields` ("card") design
         session both happen — data reference for the latter:
-        `Documentation/card-design-spec.md`
+        `Documentation/card-design-spec.md`. **Still open** — this phase
+        intentionally built everything around these two placeholders per
+        this item's own instruction, not an oversight.
+12. [x] **RESOLVED — Class-detail only, no 9th tab.** The design doc's own
+        "leaning toward" default for `ContentClassOption`'s Browse placement,
+        confirmed with the user before building `BrowseScreen`'s sidebar.
+13. [x] **Real Phase 3/4 gap found and fixed:** the `?source=` filter only
+        ever supported a single value — Phase 5's multi-select requires
+        filtering by several sources at once. Extended to accept repeated
+        `?source=` params (`sourceId: { in: [...] }`), backwards compatible
+        with every existing single-value usage. New test in `content.test.ts`.
 
 ---
 

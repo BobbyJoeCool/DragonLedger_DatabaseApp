@@ -744,29 +744,40 @@ Every content type supports:
 > understood to mean the **full-content, printable per-type display** shown
 > after a record is selected (§5.3's `<Type>DetailFields`), not a summary
 > tile in the results list. See `Documentation/card-design-spec.md`.
+>
+> **Implemented Phase 5** (infrastructure, with the two items §"Not yet
+> decided" below still genuinely open) — full rationale and every resolved
+> decision: `DevTools/Claude/phase-5.md`.
 
 ### 5.1 Data Fetching & State
 
-- [ ] **TanStack Query** (+ **TanStack Virtual** for the results list) — chosen
+- [x] **TanStack Query** (+ **TanStack Virtual** for the results list) — chosen
       over plain fetch/useEffect and over SWR
-- [ ] Filter/pagination state is **local component state, not URL params** —
+- [x] Filter/pagination state is **local component state, not URL params** —
       no shareable-URL need in a single-user local app
-- [ ] Hand-built filter bar **per content type** (8 total, one per type below),
+- [x] Hand-built filter bar **per content type** (8 total, one per type below),
       not one generic config-driven component
-- [ ] Each content type's filter/search state persists independently for the
+- [x] Each content type's filter/search state persists independently for the
       session (switching Monsters → Spells → Monsters preserves Monster's
       filters); resets on app refresh/close
 
 ### 5.2 Content Browser (`/browse`)
 
-- [ ] Sidebar: content type selector — **Spells, Classes, Races, Backgrounds,
+- [x] Sidebar: content type selector — **Spells, Classes, Races, Backgrounds,
       Conditions, Items, Monsters, Feats** (8 types; Feat added post-Compendium)
-- [ ] Filter bar per type: all types get Source multi-select (checkboxes, all
+- [x] Filter bar per type: all types get Source multi-select (checkboxes, all
       checked by default) + name search; type-specific extras (spell
-      level/school/class, item type/rarity, monster CR/type, feat category, etc.)
-- [ ] **Pagination: virtualized, bidirectional infinite scroll** (the most
+      level/school/class, item type/rarity, monster CR/type, feat category, etc.).
+      **Real gap found and fixed:** the Read API's `?source=` only ever
+      supported one value — extended to accept repeated `?source=` params
+      (`sourceId: { in: [...] }`) so the multi-select can actually filter by
+      several sources at once, across all 11 content routers.
+- [x] **Pagination: virtualized, bidirectional infinite scroll** (the most
       involved piece of this phase):
-  - `useInfiniteQuery` fetching 50 records at a time via an `IntersectionObserver` sentinel
+  - `useInfiniteQuery` fetching 50 records at a time; auto-fetch driven by the
+    virtualizer's own visible-range (functionally equivalent to an
+    `IntersectionObserver` sentinel, TanStack Virtual's own recommended
+    pattern — not a literal separate sentinel element)
   - Bidirectional fetch (forward and backward from wherever the user currently
     is) — required once jump-to-position is in play
   - TanStack Virtual renders only the visible slice — no thousands of off-screen DOM rows
@@ -776,44 +787,60 @@ Every content type supports:
     Phase 3's new `?fields=name`) powers live names in the position-bar tooltip
     while dragging, without a full-record fetch per pixel
   - Position bar resets to top on any filter-set change
-- [ ] Results list: **table** (revised from the original card-grid decision —
+  - **Real bug found and fixed** via manual Playwright verification (not
+    caught by typecheck): jumping snapped the scroll back to the top instead
+    of landing on target, because the query's anchor-page change transiently
+    collapsed `total` to 0. Fixed with `placeholderData: keepPreviousData`.
+- [x] Results list: **table** (revised from the original card-grid decision —
       see note above), still virtualized per the pagination pattern above.
-      Per-type column set not yet decided.
+      Per-type column set — **still not decided**, placeholder `<Type>Row`
+      (name + source only) built in its place per this phase's own scope.
 
 ### 5.3 Detail View (`/browse/:type/:id`)
 
-- [ ] Breadcrumb: Browse → [Type] → [Name]
-- [ ] `SourceBadge` — links to source detail
+- [x] Breadcrumb: Browse → [Type] → [Name]
+- [x] `SourceBadge` — links to source detail; truncates long Compendium
+      source names (some run 200+ characters) with a title tooltip
 - [ ] `<Type>DetailFields` — the full-content, **printable** per-type display
       (referred to elsewhere as the "card"); layout **not decided in this
       phase** — its own dedicated design session, data reference at
-      `Documentation/card-design-spec.md`
-- [ ] "Edit" button — auth-gated, opens Phase 7's edit form
-- [ ] "Delete" button — auth-gated, confirmation dialog wired to Phase 4's
-      `DELETE /api/:type/:id` with `{ confirm: true }`
+      `Documentation/card-design-spec.md`. **Still open** — a generic field
+      dump stands in for it for now, per this phase's own scope.
+- [x] "Edit" button — auth-gated, present but disabled ("Coming in Phase 7") —
+      opens Phase 7's edit form, which doesn't exist yet
+- [x] "Delete" button — auth-gated, confirmation dialog wired to Phase 4's
+      `DELETE /api/:type/:id` with `{ confirm: true }`; real two-step flow
+      (preview call, then confirm) surfaces Class/Race's dependents list
 
 ### 5.4 Shared Hooks
 
-- [ ] `useContentList(type, filters)` — wraps the paginated GET via `useInfiniteQuery`
-- [ ] `useContentNameIndex(type, filters)` — wraps the `?fields=name` lightweight fetch
-- [ ] `useContentDetail(type, id)` — wraps `GET /:type/:id` via `useQuery`
+- [x] `useContentList(type, filters)` — wraps the paginated GET via `useInfiniteQuery`
+- [x] `useContentNameIndex(type, filters)` — wraps the `?fields=name` lightweight fetch
+- [x] `useContentDetail(type, id)` — wraps `GET /:type/:id` via `useQuery`
 
 ### 5.5 Phase 5 Tests
 
-- [ ] Browser renders without errors for each of the 8 content types
-- [ ] Filter by level + class narrows spell results correctly
-- [ ] Switching between all 8 content types preserves each one's filter state independently
-- [ ] Position bar drag shows live names from the index without full-record fetches
-- [ ] Jumping to an arbitrary position renders that neighborhood without fetching everything in between
-- [ ] Detail view 404 page shown for unknown id
+- [x] Browser renders without errors for each of the 8 content types
+- [x] Filter by level + class narrows spell results correctly
+- [x] Switching between all 8 content types preserves each one's filter state independently
+- [x] Position bar drag shows live names from the index without full-record fetches
+- [x] Jumping to an arbitrary position renders that neighborhood without fetching everything in between
+- [x] Detail view 404 page shown for unknown id
+
+**Verification method:** no client-side automated test runner exists yet
+(no `vitest` config for `client/`) — the above were verified manually via
+Playwright screenshots against the real dev server, not a written regression
+suite. Flagged as a real gap for Phase 6/7, which will keep needing this
+same kind of verification.
 
 **Not yet decided (flagged in the final export, not oversights):**
 - `<Type>DetailFields` — the full-content, printable per-type "card" —
   deferred to its own session. Data reference for that session:
   `Documentation/card-design-spec.md`.
 - Results-list table's per-type column set — not yet decided (see revision note above)
-- Whether `ContentClassOption` gets its own Browse tab or is only surfaced from
-  a Class's detail view (leaning toward the latter, but not a deliberate decision yet)
+- ~~Whether `ContentClassOption` gets its own Browse tab~~ — **RESOLVED:**
+  surfaced only from a Class's detail view, no dedicated tab. Confirmed with
+  the user before building `BrowseScreen`.
 
 ---
 
