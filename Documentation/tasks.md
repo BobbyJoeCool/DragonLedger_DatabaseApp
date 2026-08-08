@@ -360,24 +360,25 @@ outline.md's Open Questions appendix — resolve that first rather than guessing
        the very first migration; no new migration needed for this item.
 2. [x] **Already seeded from Phase 1** — the `homebrew` Source row exists and
        is exercised by every write test.
-3. [x] Extended each content type's Zod schema file with `<Type>CorrectableSchema`.
-       **Real per-type field list decided** (drafted against the design doc's
-       own criterion — parser-inferred/derived = correctable, raw prose or
-       direct source copies = not — and confirmed with the user before
-       writing any schema code): Spell/Condition none (their real inferred
-       content lives inside `extraData`, deferred); Class: hitDie,
-       primaryAbility, savingThrows, armorProfs, weaponProfs, skillChoices,
-       spellcastingAbility; Subclass/Subrace/Race/ClassOption: their
-       cross-source-resolved parent-link field (classId/raceId/parentRaceId);
-       Background: proficiencies, abilityBonuses; Item: rarity,
-       requiresAttunement, damage, properties; Feat: category; Monster: the
-       design doc's original 6 fields (not actually in the file until now —
-       only ever existed in the doc's worked example).
+3. [x] Extended each content type's Zod schema file with `<Type>CorrectableSchema`,
+       original per-type field list (superseded, see item 3a below).
+3a. [ ] **RULE CHANGED (2026-08-08)** — Correctable Fields is no longer a
+       per-type curated list; it's source-type-based (`v1-roadmap-open-decisions.md`
+       §4.1, `phase-4-write-api-final-export.md` §4). `API`-sourced entries:
+       nothing correctable. `FILE`-sourced entries: everything correctable
+       except `name`/`slug`/`sourceId`/parent FK. `MANUAL`: unchanged. Needs:
+       (a) regenerate every `<Type>CorrectableSchema` via `.omit()` instead
+       of the old `.pick()` lists, (b) reorder `createPatchHandler` in
+       `server/src/routes/content/writeHandlers.ts` so the source-type check
+       gates the correctable check instead of running unconditionally.
+       **Not yet implemented — pending go-ahead to edit source files.**
 4. [x] Built `server/src/utils/errorResponse.ts` — `{ error: { code, message, ...extra } }`
 5. [x] Implemented `POST /api/<type>` for all 11 routers via a shared
        `createPostHandler` factory (`server/src/routes/content/writeHandlers.ts`)
 6. [x] Implemented `PATCH /api/<type>/:id` for all 11 routers via a shared
-       `createPatchHandler` factory — Correctable-Fields check first, then MANUAL
+       `createPatchHandler` factory — Correctable-Fields check first (runs
+       unconditionally, before the source-type lookup — **see item 3a above,
+       needs reordering to gate on source type**), then MANUAL
        passthrough, then `saveAs`. `sourceId` stripped from every PATCH body
        (a raw edit would bypass `saveAs`/`targetSourceId`, the mechanism meant
        to model that move).
@@ -482,18 +483,48 @@ outline.md's Open Questions appendix — resolve that first rather than guessing
 
 ## Phase 6 — Import UI
 
-> No dedicated design session yet — build against outline.md §Phase 6 as
-> written, but do not skip the two items below; they're known requirements,
-> not optional polish.
+> Full rationale and every resolved decision: `DevTools/Claude/phase-6.md`.
+> Design doc: `Documentation/Phase-6-Import-UI-Design-Decisions.md`.
 
-- [ ] Source list (`/sources`) — table, actions (Re-import, Delete, **Clear
-      entries** wired to Phase 4's bulk-clear endpoint), "Add Source" dialog
-- [ ] Import wizard Step 1 — **three** import-type options: Open5e API,
+- [x] Source list (`/sources`) — table, actions (Re-import for `type: 'API'`
+      sources only, Delete, **Clear entries** wired to Phase 4's bulk-clear
+      endpoint), "Add Source" dialog
+- [x] Import wizard Step 1 — **three** import-type options: Open5e API,
       Compendium XML _(new)_, JSON file
-- [ ] Import wizard Step 2b (Compendium) — file picker + the
+- [x] Import wizard Step 2b (Compendium) — file picker + the
       `AWAITING_CONFIRMATION` duplicate-summary step before the real import runs
-- [ ] Progress view — per-content-type progress, live counts, error list
-- [ ] Write Phase 6 tests including the Compendium `AWAITING_CONFIRMATION` flow
+- [x] Progress view — per-content-type progress, live counts, error list.
+      Shared across all three import kinds via one `Step3Progress` component.
+- [x] Write Phase 6 tests including the Compendium `AWAITING_CONFIRMATION`
+      flow — `server/src/__tests__/importRoutes.test.ts` (8 tests) and
+      `server/src/__tests__/importers/jsonFileImporter.test.ts` (6 tests).
+      The SSE stream-persistence fix itself (see below) has no automated
+      regression test — verified manually, flagged as a real coverage gap.
+- [x] **Four real bugs found and fixed, none visible from the design doc or
+      typecheck alone:**
+      1. SSE route closed the stream on any `DONE` event, including the one
+         `AWAITING_CONFIRMATION` uses — contradicted the design doc's own
+         requirement that the stream stay open through a Compendium pause.
+      2. Nothing let the client see *what* matched when a Compendium job
+         paused — added `GET /api/import/:jobId`.
+      3. **The Electron file-picker was completely non-functional** — the
+         preload script's `import` syntax compiled to real ESM, but
+         Electron's sandboxed preload loader can't parse `import` at all
+         regardless of `"type": "module"`. Only caught by actually launching
+         Electron (Playwright `_electron`); no typecheck or plain-browser
+         test could have found it. Fixed via TypeScript's `.cts` extension
+         (forces CommonJS output for just that one file).
+      4. **The server test suite silently double-ran itself** whenever
+         `server/dist/` was populated by a real build — Vitest 4's default
+         `exclude` no longer covers `**/dist/**`, so compiled
+         `dist/__tests__/*.test.js` duplicates raced the real `src/` sources
+         against the same live `dev.db`. Fixed with an explicit exclude in
+         `server/vitest.config.ts`; this had been silently latent since
+         Phase 1 (never triggered before because a full `tsc` build of the
+         server workspace hadn't run mid-session until now).
+- [x] New backend, not in the original outline: `POST /api/import/file`
+      (JSON import, Appendix B shape) and `ImportJobType` extended to
+      `OPEN5E | FILE | COMPENDIUM | JSON_FILE`.
 
 ---
 
@@ -516,9 +547,9 @@ outline.md's Open Questions appendix — resolve that first rather than guessing
        Fields list is real and reviewed (not copied from another type),
        required/nullable matches the Zod schema, unsaved-changes guard and
        Save/Save-as behavior both verified against that type's actual field set
-8. [ ] **[DECISION NEEDED]** Resolve `ContentClassOption`'s form treatment
-       (own form vs. edited within its parent Class) before or during whichever
-       future session covers Class's form
+8. [x] **RESOLVED (2026-08-08, see `v1-roadmap-open-decisions.md` §0.1):**
+       `ContentClassOption` gets no standalone form — edited inline within
+       `ClassForm` when that type's form session happens
 
 ---
 

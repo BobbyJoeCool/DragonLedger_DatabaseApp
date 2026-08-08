@@ -37,3 +37,11 @@ export function getPrismaCliEntry(): string {
 export function getUserDataDbPath(): string {
   return path.join(app.getPath('userData'), 'dragonledger.db')
 }
+
+// preload.cts always compiles alongside main.ts into the same dist/ folder —
+// unlike server/client dist (bundled as extraResources when packaged), this
+// is the main process's own code, so one path works for both dev and packaged.
+// .cjs, not .js: see preload.cts's own header comment for why.
+export function getPreloadPath(): string {
+  return path.join(__dirname, 'preload.cjs')
+}

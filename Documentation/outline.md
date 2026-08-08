@@ -846,47 +846,136 @@ same kind of verification.
 
 ## PHASE 6 — Import UI
 
-> **Not yet through a dedicated design session** — original outline scope below
-> still holds, but two things are now known to require updates once that
-> session happens, flagged rather than designed here.
+> **Implemented Phase 6.** Full rationale and every resolved decision:
+> `Documentation/Phase-6-Import-UI-Design-Decisions.md` (produced from
+> `DevTools/Claude/phase-6-import-ui-design-brief.md`). Dev log:
+> `DevTools/Claude/phase-6.md`.
 
 ### 6.1 Source List (`/sources`)
 
-- [ ] Table of all sources: name, type badge, entry count, last updated, actions
-- [ ] Actions per source: "Re-import" (API sources), "Delete source" (with
-      confirmation), and — per Phase 4 §4.5 — a "Clear entries" action wired
-      to the new bulk-clear endpoint
-- [ ] "Add Source" button → create source dialog (name + description)
-- [ ] Delete confirmation states how many entries will be deleted
+- [x] Table of all sources: name, type badge, entry count, last updated, actions
+- [x] Actions per source: "Re-import" (API sources — `Source.type === 'API'`),
+      "Delete source" (with confirmation), and — per Phase 4 §4.5 — a "Clear
+      entries" action wired to the new bulk-clear endpoint. **No "Re-import"
+      for Compendium/JSON sources** (design decision — see the decisions doc
+      §1.6): both need a filesystem path the app never stores, so a re-run
+      would just reopen the wizard anyway.
+- [x] "Add Source" button → create source dialog (name + description)
+- [x] Delete confirmation states how many entries will be deleted
 
 ### 6.2 Import Wizard (`/sources/import`)
 
 **Step 1 — Choose import type**
-- [ ] Three options now, not two: "From Open5e API", "From Compendium XML file"
+- [x] Three options now, not two: "From Open5e API", "From Compendium XML file"
       *(new — needs its own step, distinct from the original outline's generic
       "From JSON file")*, "From JSON file"
 
 **Step 2a — Open5e API import** — source name input, content-type checkboxes, "Start Import" (SSE progress)
 
 **Step 2b — Compendium XML import** *(new)* — file picker (`.xml`), then:
-- [ ] If the batch-level duplicate check returns matches, show the
+- [x] If the batch-level duplicate check returns matches, show the
       `AWAITING_CONFIRMATION` summary ("N records match content that already
       exists — import as duplicates, or skip?") **before** the real import runs
       — this is a genuinely new UI state the original wizard design never
       needed to account for
+- [x] **No content-type checkboxes on this step** (design decision — decisions
+      doc §1.5): the backend always imports the same fixed 7 types with no
+      filtering option, so showing checkboxes would imply a choice that
+      doesn't exist. A static informational list stands in instead.
+- **Forward note, not this phase's scope:** a future session could add
+  import-by-section/subsection filtering, or a preview screen letting the
+  user deselect individual rows before committing — that would need a
+  backend change (the Compendium route accepting a filter, or a two-phase
+  preview/commit flow) as well as a UI one. Flagged here so that session
+  doesn't have to reconstruct this context from scratch.
 
 **Step 2c — JSON file import** — source name input, file picker (`.json`), "Upload & Import"
 
+- [x] Request contract designed and built this phase (it didn't exist before):
+      `POST /api/import/file` `{ sourceId, sourceName, filePath }` → `202
+      {jobId}`, reusing Appendix B's file-content shape. See §6.4 below for
+      what "reusing the existing transform functions" actually meant in
+      practice — no such functions existed for this shape, so this phase
+      wrote real ones.
+
 **Step 3 — Progress view** — progress bar per content type, live count, error list, "Done" → `/sources`
 
-### 6.3 Phase 6 Tests
+- [x] Shared across all three import kinds via one `useImportProgress(jobId)`
+      hook and one `Step3Progress` component
 
-- [ ] Import wizard flow completes without errors against Open5e
-- [ ] SSE progress events arrive and the progress bar advances
-- [ ] Compendium import surfaces the `AWAITING_CONFIRMATION` step correctly
-      and respects the user's duplicate/skip choice
-- [ ] Re-import replaces data (Open5e) or skips existing rows unconditionally (Compendium); counts are accurate after
-- [ ] "Clear entries" action removes all of a source's content, leaves the source row intact
+### 6.4 Backend Additions This Phase (not in the original outline)
+
+- [x] **File-picker mechanism:** native Electron file dialog, not a multipart
+      upload (decisions doc §1.1) — `electron/src/preload.cts` +
+      `dialog:selectFile` IPC channel, exposed to the renderer as
+      `window.electronAPI.selectFile`. The client gates the picker button on
+      `isElectron()` since the client also runs in a plain browser during dev.
+      **Real bug found and fixed, and only catchable by actually launching
+      Electron** (not typecheck, not a plain-browser test): the preload
+      script silently failed to load at all — `import { contextBridge, ... }
+      from 'electron'` compiled to real ESM (this package is `"type":
+      "module"`), but Electron's sandboxed preload loader executes preload
+      scripts as plain scripts and can't parse `import` syntax regardless of
+      the package's module type. The entire file-picker feature — the design
+      doc's own "load-bearing decision for the whole wizard" — was completely
+      broken until this was found. Fixed by renaming to `preload.cts`
+      (TypeScript's per-file CommonJS-output override for a `"type":
+      "module"` package), which compiles to `preload.cjs` using
+      `require`/`module.exports` under the hood while the source still reads
+      as normal `import`/`export`. Verified via a real `_electron.launch()`
+      (Playwright) round-trip, not just a rebuild.
+- [x] `ImportJobType` extended to `OPEN5E | FILE | COMPENDIUM | JSON_FILE`
+      (decisions doc §1.4) — `FILE` kept for backward compat with existing
+      rows, never written by new jobs; the Compendium route now writes
+      `COMPENDIUM`.
+- [x] **Real gap found and fixed:** the SSE route (`GET /api/import/progress/:jobId`)
+      closed the stream on *any* `type:'DONE'` event, but
+      `compendiumOrchestrator.ts` emits `DONE` for `AWAITING_CONFIRMATION`
+      too (not just real terminal statuses) — contradicting decisions doc
+      §1.3's explicit requirement that the stream stay open through the
+      pause. Fixed to only close on a genuinely terminal status.
+- [x] **Real gap found and fixed:** nothing let the client see *what* matched
+      when a Compendium job pauses — the `AWAITING_CONFIRMATION` `DONE` event
+      carries no payload beyond the status itself. Added
+      `GET /api/import/:jobId` (single job detail, `contentTypes`/`errorLog`
+      parsed) for `AwaitingConfirmationPanel` to fetch match details from.
+- [x] `server/src/importers/jsonFileImporter.ts` — new, since "reuses the
+      existing per-content-type transform functions" (decisions doc §2.1)
+      turned out not to literally apply: Open5e/Compendium's transform
+      functions map a *foreign* API/XML shape onto the schema, but Appendix
+      B's JSON shape is already close to the schema's own field names — this
+      needed real validation/slug-generation/extraData-folding logic of its
+      own, reusing each content type's existing Zod schema for validation
+      rather than a source-specific transform. Scoped to the 8 top-level
+      browsable types only (no Subclass/Subrace/ClassOption — they need FK
+      linkage a flat JSON entry has no clean way to express).
+
+### 6.5 Phase 6 Tests
+
+- [x] Import wizard flow completes without errors against Open5e
+- [x] SSE progress events arrive and the progress bar advances
+- [x] Compendium import surfaces the `AWAITING_CONFIRMATION` step correctly
+      and respects the user's duplicate/skip choice — verified manually in
+      the desktop app (see dev log); the SSE-stream-persistence fix itself
+      has no automated regression test (awkward to test against the existing
+      supertest-based harness, flagged as a real coverage gap)
+- [x] Re-import replaces data (Open5e) or skips existing rows unconditionally (Compendium); counts are accurate after
+- [x] "Clear entries" action removes all of a source's content, leaves the source row intact
+- [x] New this phase: `POST /api/import/file` and `GET /api/import/:jobId`
+      route tests (`server/src/__tests__/importRoutes.test.ts`);
+      `extractSections`/`importJsonFile` unit tests
+      (`server/src/__tests__/importers/jsonFileImporter.test.ts`)
+- [x] **Real gap found and fixed, in test infrastructure rather than app
+      code:** running a full `npm run build` (not just `tsc --noEmit`)
+      compiles `server/src/__tests__/` into `server/dist/__tests__/*.test.js`
+      too. Vitest 4's default `exclude` dropped `**/dist/**` (older versions
+      had it) — with nothing in `vitest.config.ts` overriding that, a
+      populated `dist/` gets discovered and run *alongside* the real `src/`
+      sources, both copies racing the same live `dev.db` in parallel and
+      producing spurious failures unrelated to any real bug. Latent since
+      Phase 1, never triggered before because a full server-workspace build
+      hadn't run mid-session until this phase. Fixed with an explicit
+      `**/dist/**` exclude in `server/vitest.config.ts`.
 
 ---
 

@@ -2,14 +2,33 @@ import { execFile } from 'node:child_process'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { promisify } from 'node:util'
-import { app, BrowserWindow, dialog } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain } from 'electron'
 import {
   getClientDistDir,
+  getPreloadPath,
   getPrismaCliEntry,
   getPrismaResourceDir,
   getServerDistEntry,
   getUserDataDbPath,
 } from './paths.js'
+
+// dialog:selectFile — Phase 6's file-picker bridge (Decision 1.1): the
+// renderer has no filesystem access on its own (contextIsolation), so it
+// invokes this to get an absolute path back for the Compendium/JSON import
+// endpoints, which both take a server-side path string, not an upload.
+ipcMain.handle(
+  'dialog:selectFile',
+  async (_event, args: { filters?: { name: string; extensions: string[] }[] }) => {
+    const result = await dialog.showOpenDialog({
+      properties: ['openFile'],
+      filters: args?.filters,
+    })
+    if (result.canceled || result.filePaths.length === 0) {
+      return { canceled: true }
+    }
+    return { filePath: result.filePaths[0] }
+  },
+)
 
 const execFileAsync = promisify(execFile)
 
@@ -32,7 +51,12 @@ async function startServer(): Promise<number> {
 }
 
 function createWindow(port: number): void {
-  const win = new BrowserWindow({ width: 1280, height: 800, show: false })
+  const win = new BrowserWindow({
+    width: 1280,
+    height: 800,
+    show: false,
+    webPreferences: { preload: getPreloadPath(), contextIsolation: true, nodeIntegration: false },
+  })
   win.once('ready-to-show', () => win.show())
   win.loadURL(`http://localhost:${port}`)
 }
@@ -59,7 +83,12 @@ async function bootstrapProd(): Promise<void> {
 }
 
 async function bootstrapDev(startUrl: string): Promise<void> {
-  const win = new BrowserWindow({ width: 1280, height: 800, show: false })
+  const win = new BrowserWindow({
+    width: 1280,
+    height: 800,
+    show: false,
+    webPreferences: { preload: getPreloadPath(), contextIsolation: true, nodeIntegration: false },
+  })
   win.once('ready-to-show', () => win.show())
   win.loadURL(startUrl)
 }

@@ -15,7 +15,10 @@ enum SourceType {
 
 enum ImportJobType {
   OPEN5E
-  FILE
+  FILE // legacy value — Compendium jobs wrote this before Phase 6 split it out;
+  // existing historical rows keep it as-is, no backfill. New jobs never write it.
+  COMPENDIUM
+  JSON_FILE
 }
 
 enum ImportJobStatus {

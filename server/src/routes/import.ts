@@ -1,8 +1,10 @@
 import { existsSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
 import { Router } from 'express'
 import { prisma } from '../db/client.js'
 import { importCompendium, type DuplicateDecision } from '../importers/compendiumOrchestrator.js'
 import { importEvents, type ImportProgressEvent } from '../importers/importEvents.js'
+import { extractSections, importJsonFile } from '../importers/jsonFileImporter.js'
 import { importSource, type Open5eContentType } from '../importers/orchestrator.js'
 import { requireAuth } from '../middleware/auth.js'
 
@@ -133,9 +135,16 @@ importRouter.get('/progress/:jobId', async (req, res) => {
     return
   }
 
+  // A 'DONE' event fires both for a real terminal status AND for a
+  // Compendium job pausing at AWAITING_CONFIRMATION (compendiumOrchestrator.ts
+  // calls emitComplete(jobId, 'AWAITING_CONFIRMATION') to push that status
+  // out immediately) — Phase 6 Decision 1.3 requires the stream stay open
+  // through that pause, since the same EventSource needs to keep listening
+  // for the further events POST .../resume triggers. Only close on a
+  // genuinely terminal status.
   const listener = (event: ImportProgressEvent | { type: 'DONE'; status: string }) => {
     send(event)
-    if (event.type === 'DONE') {
+    if (event.type === 'DONE' && TERMINAL_STATUSES.has(event.status)) {
       importEvents.off(jobId, listener)
       res.end()
     }
@@ -199,7 +208,7 @@ importRouter.post('/compendium', requireAuth, async (req, res) => {
   const job = await prisma.importJob.create({
     data: {
       sourceId: 'fc5-compendium-uncredited',
-      jobType: 'FILE',
+      jobType: 'COMPENDIUM',
       contentTypes: JSON.stringify(COMPENDIUM_CONTENT_TYPES),
       status: 'PENDING',
     },
@@ -273,6 +282,85 @@ importRouter.post('/compendium/:jobId/resume', requireAuth, async (req, res) => 
   )
 })
 
+// POST /api/import/file — imports a user-authored JSON file (Appendix B
+// shape) at a server-side path, same file-path-in posture as the Compendium
+// route (Phase 6 Decision 1.1 — no multipart upload, the file already lives
+// on the same machine as the server process). No content-type selection: the
+// file's own structure determines what's imported (Decision 1.2).
+importRouter.post('/file', requireAuth, async (req, res) => {
+  const { sourceId, sourceName, filePath } = req.body as {
+    sourceId?: unknown
+    sourceName?: unknown
+    filePath?: unknown
+  }
+
+  if (typeof sourceId !== 'string' || sourceId.trim().length === 0) {
+    res.status(400).json({ error: '`sourceId` is required' })
+    return
+  }
+  if (typeof sourceName !== 'string' || sourceName.trim().length === 0) {
+    res.status(400).json({ error: '`sourceName` is required' })
+    return
+  }
+  if (typeof filePath !== 'string' || filePath.trim().length === 0) {
+    res.status(400).json({ error: '`filePath` is required' })
+    return
+  }
+  if (!existsSync(filePath)) {
+    res.status(400).json({ error: `File not found: ${filePath}` })
+    return
+  }
+
+  let sectionTypes: string[]
+  try {
+    const raw = await readFile(filePath, 'utf-8')
+    const { sections } = extractSections(JSON.parse(raw) as unknown)
+    sectionTypes = sections.map((s) => s.type.toUpperCase())
+  } catch (err) {
+    res.status(400).json({ error: `Invalid JSON import file: ${(err as Error).message}` })
+    return
+  }
+  if (sectionTypes.length === 0) {
+    res.status(400).json({ error: 'File contains no recognized content sections' })
+    return
+  }
+
+  await prisma.source.upsert({
+    where: { id: sourceId },
+    update: {},
+    create: {
+      id: sourceId,
+      name: sourceName,
+      type: 'FILE',
+      lastUpdated: new Date(),
+      isDeletable: true,
+    },
+  })
+
+  const job = await prisma.importJob.create({
+    data: {
+      sourceId,
+      jobType: 'JSON_FILE',
+      contentTypes: JSON.stringify(sectionTypes),
+      status: 'PENDING',
+    },
+  })
+
+  res.status(202).json({ jobId: job.id })
+
+  importJsonFile({ filePath, sourceId, jobId: job.id }).catch(async (err) => {
+    await prisma.importJob.update({
+      where: { id: job.id },
+      data: {
+        status: 'FAILED',
+        completedAt: new Date(),
+        errorLog: JSON.stringify([{ contentType: 'ALL', message: (err as Error).message }]),
+      },
+    })
+    importEvents.emitComplete(job.id, 'FAILED')
+  })
+})
+
 // GET /api/import/history — past import jobs, read from the DB.
 importRouter.get('/history', async (_req, res) => {
   const jobs = await prisma.importJob.findMany({ orderBy: { startedAt: 'desc' }, take: 50 })
@@ -283,4 +371,25 @@ importRouter.get('/history', async (_req, res) => {
       errorLog: j.errorLog ? JSON.parse(j.errorLog) : null,
     })),
   )
+})
+
+// GET /api/import/:jobId — single job detail, contentTypes/errorLog parsed.
+// Registered after the literal /history path above (Express matches routes
+// in registration order, and /:jobId would otherwise swallow /history as a
+// jobId of "history"). Real gap this closes: the AWAITING_CONFIRMATION `DONE`
+// SSE event carries no match details (just {type:'DONE', status}) — the
+// wizard's AwaitingConfirmationPanel needs this to show what actually
+// matched, per outline.md §6.2's "N records match content that already
+// exists" requirement.
+importRouter.get('/:jobId', async (req, res) => {
+  const job = await prisma.importJob.findUnique({ where: { id: req.params.jobId } })
+  if (!job) {
+    res.status(404).json({ error: 'Import job not found' })
+    return
+  }
+  res.json({
+    ...job,
+    contentTypes: JSON.parse(job.contentTypes),
+    errorLog: job.errorLog ? JSON.parse(job.errorLog) : null,
+  })
 })

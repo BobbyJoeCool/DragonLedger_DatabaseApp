@@ -66,3 +66,4 @@ On every app launch, running `prisma migrate deploy` (the non-interactive, produ
 - Packaging timeline (build Electron wrapper now vs. after Phases 5–7 ship) — not decided.
 - Whether to formally retire the Phase 0 write-auth middleware, keep it as-is, or repurpose it for something else now that the threat model has changed — flagged, not decided.
 - Every existing brief (Phase 1.1, 2, 4, 5, and the not-yet-run Phase 7) should be considered to have its tech-stack line superseded by Section 2 above; none currently reference this document since it postdates them.
+- **Phase 6's design brief independently re-derived this same contradiction** (its own Phase 1.1 doc still says "hosted web app on Azure SQL") before this addendum was found — confirms the addendum's supersession list above, no new decision needed. Added here as the pointer a future session should find first.
