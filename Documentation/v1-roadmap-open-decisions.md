@@ -1,8 +1,8 @@
 # DragonLedger DatabaseApp — Path to v1.0.0: Open Design Decisions
 
 **Purpose of this document:** every phase between where the project is now
-(Phase 0.7, Electron packaging, done — version `0.0.7`) and `v1.0.0` (Phase 7,
-Edit/Create UI, complete) still has open design questions sitting in various
+(Phase 0.7, Electron packaging, done — version `0.0.7`) and `v1.0.0` (Phase 8,
+Card Component Theming System, complete) still has open design questions sitting in various
 per-phase "final export" documents, some resolved-as-a-rule-but-not-as-data,
 some genuinely undecided, some just flagged as needing more real-data
 verification before they can be trusted. This document consolidates **every
@@ -21,8 +21,11 @@ phase.
 
 **Versioning note:** per the project's convention, `package.json` version
 mirrors the phase number as `0.<phase>.<subphase>` pre-1.0.0. `v1.0.0` is
-reached when Phase 7 is complete — there is no separate "1.0 polish" phase
-beyond what's listed below.
+reached when Phase 8 is complete — there is no separate "1.0 polish" phase
+beyond what's listed below. Phase 8 (Card Component Theming System) was
+added 2026-08-09, sequenced after Phase 7 by deliberate choice — every
+content type gets a plain, functional form/card first, theming applied
+once across all of them afterward rather than per-type.
 
 **What this document is *not*:** a re-litigation of anything already firmly
 decided. Settled decisions are summarized briefly for context (so a
@@ -44,6 +47,7 @@ work — are the actual content.
 | 5 | Browse UI | 2 (one resolved via #0.1) | 0 |
 | 6 | Import UI | **whole phase** — no design session has happened yet | 0 |
 | 7 | Edit & Create UI | 2 (one resolved via #0.1) | 0 |
+| 8 | Card Component Theming System | **0** — resolved via `phase-8-card-theming-final-export.md` | 0 |
 
 Plus **2 cross-cutting decisions** (Section 0), one of which (0.1) is now
 resolved — it touched Phases 3, 5, and 7, all now closed out with the same
@@ -450,6 +454,24 @@ decided with no open items.
 
 ---
 
+## Phase 8 — Card Component Theming System
+
+**Fully resolved, 2026-08-09** — `Documentation/phase-8-card-theming-final-export.md`
+is a complete handoff from a separate design-only session (consolidating
+~9 standalone HTML demo files), with its own implementation instructions
+(§6). No open decisions remain: 3 locked theme presets (Parchment/Scribe's
+Copy/Grimoire), the shared `Shell`/`ThemeProvider`/`Divider`/`Subcard`/
+`useFitToPage` component layer, 5 shared utility functions, per-type card
+layout modes, and an explicit deferred-work list (source-priority settings
+UI, app-wide custom theme builder UI, monster-spell-matching read API,
+`ContentClassOption` card) are all specified there.
+
+**Sequencing, not a decision:** deliberately built after Phase 7 completes
+(every type has a plain functional form/card first) rather than styling
+each type twice.
+
+---
+
 ## Appendix — Source Documents
 
 Everything in this document was consolidated from the following existing
@@ -464,6 +486,7 @@ double-checking):
 - `Documentation/phase-4-write-api-final-export.md`
 - `Documentation/phase-5-browse-ui-final-export.md`
 - `Documentation/phase-7-edit-create-ui-final-export.md`
+- `Documentation/phase-8-card-theming-final-export.md`
 - `Documentation/compendium-import-final-export.md`
 - `Documentation/compendium-race-subrace-reimport-safety-export.md`
 - `Documentation/card-design-spec.md` — ready-to-use data reference for the Phase 5 card-layout decision (Section 5.3 above)

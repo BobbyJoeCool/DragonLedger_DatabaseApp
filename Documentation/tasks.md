@@ -558,18 +558,57 @@ outline.md's Open Questions appendix — resolve that first rather than guessing
 
 ---
 
-## Phase 8 — Desktop Packaging (Electron) — _moved to Phase 0.7, see above_
-
-**RESOLVED:** this was moved up front per decision — build it right after
-Phase 0, not deferred to the end. The task list now lives under **Phase 0.7**
-near the top of this document. Only two items remained genuinely tied to
-_later_ phases (they need Phases 2.5/5–7 to exist first) and are listed here
-for reference:
+**Note on Desktop Packaging:** originally labeled "Phase 8" in early design
+docs; that work was moved up front and actually lives at **Phase 0.7** near
+the top of this document (see there for the full task list). The "Phase 8"
+numeral itself is now used below for a different, later phase. Two items
+tied to _later_ phases (they need Phases 2.5/5–7 to exist first) are listed
+here for reference:
 
 - [ ] Document the "back up your `userData` DB file before installing an
       update with new migrations" recommendation somewhere user-visible
 - [ ] Full smoke test with real content once Phases 2.5–7 ship: import Open5e
       → import Compendium → browse → edit → delete → close → relaunch → data persists
+
+---
+
+## Phase 8 — Card Component Theming System
+
+**RESOLVED (2026-08-09) via `Documentation/phase-8-card-theming-final-export.md`**
+— a full handoff from a separate design-only session, no open decisions.
+Deliberately sequenced *after* Phase 7: every content type gets a plain,
+functional `<Type>Form`/`<Type>Card` first (Phase 7); this phase applies
+real theming/print layout on top of all of them at once, rather than
+styling each type twice. See the final-export doc for full detail — task
+list per its §6:
+
+1. [ ] Build the shared component layer (`src/components/cards/shared/`):
+       `Shell` (`.page`/`.document` targets, `PAGE_INNER_MAX` constant),
+       `ThemeProvider` (Parchment/Scribe's Copy/Grimoire presets + the 5-slot
+       custom theme builder, app-wide scope), `Divider` (major/minor +
+       `suppressEdgeDividers()`), `Subcard` (corner-tab, shared across
+       Race/Class/Monster-packet uses), `useFitToPage` hook (`monster` and
+       `document` modes, shared `0.55` floor constant exported once)
+2. [ ] Port the 5 shared utilities as pure functions with unit tests
+       against the real example rows named in the doc: `grantShapeToText`,
+       `parseFeatDescription`, `parseDescriptionBlocks`/`splitSentences`/
+       segment-pagination trio, `groupFeatures`, `spellFooterFromExtraData`
+3. [ ] Build the orphaned-parent fallback (Subclass/Subrace) as one shared
+       presentational pattern, not two separate implementations
+4. [ ] Build each per-type card component (§3 of the final-export doc)
+       composing the shared pieces — Spell/Item trading cards, Condition/
+       Feat/Background simple cards, Race/Class List+Expanded modes,
+       Monster (own width/scale logic, per-section independent multi-
+       column), Monster+Spellcasting packet
+5. [ ] Explicitly out of scope this phase: `ContentClassOption` card (open
+       question upstream), the source-priority settings UI, the app-wide
+       custom theme builder's settings surface, and the monster-spell-
+       matching read API — flag as separate follow-up work, don't build
+       speculatively
+6. [ ] Visual pass against all 3 theme presets per type once built,
+       specifically re-checking Subcard tab vertical clearance and the
+       Grimoire dark-theme print fallback — both were real bugs during the
+       original demo phase
 
 ---
 

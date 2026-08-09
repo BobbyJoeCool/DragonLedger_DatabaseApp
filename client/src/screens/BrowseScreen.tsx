@@ -1,7 +1,8 @@
 import { useState } from 'react'
+import { Link } from 'react-router'
 import { ResultsTable } from '@/components/browse/ResultsTable'
 import { defaultFilters, type ContentFilters } from '@/lib/contentQuery'
-import { CONTENT_TYPES, CONTENT_TYPE_LABELS, type ContentType } from '@/lib/contentTypes'
+import { CONTENT_TYPES, CONTENT_TYPE_LABELS, CONTENT_TYPE_SINGULAR, type ContentType } from '@/lib/contentTypes'
 import { FILTER_BARS } from '@/lib/filterBarRegistry'
 
 type BrowseState = Record<ContentType, ContentFilters>
@@ -19,6 +20,7 @@ function initialBrowseState(): BrowseState {
 export function BrowseScreen() {
   const [activeType, setActiveType] = useState<ContentType>('spells')
   const [browseState, setBrowseState] = useState<BrowseState>(initialBrowseState)
+  const isSignedIn = Boolean(sessionStorage.getItem('app-password'))
 
   const FilterBar = FILTER_BARS[activeType]
   const filters = browseState[activeType]
@@ -46,9 +48,19 @@ export function BrowseScreen() {
         ))}
       </nav>
       <div className="min-w-0 flex-1 space-y-4">
-        <div>
-          <h2 className="text-2xl font-semibold">{CONTENT_TYPE_LABELS[activeType]}</h2>
-          <p className="mt-1 text-muted-foreground">Search and filter content.</p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-semibold">{CONTENT_TYPE_LABELS[activeType]}</h2>
+            <p className="mt-1 text-muted-foreground">Search and filter content.</p>
+          </div>
+          {isSignedIn && (
+            <Link
+              to={`/browse/${activeType}/new`}
+              className="shrink-0 rounded-md border px-3 py-2 text-sm hover:bg-accent"
+            >
+              + New {CONTENT_TYPE_SINGULAR[activeType]}
+            </Link>
+          )}
         </div>
         <FilterBar filters={filters} onChange={updateFilters} />
         <ResultsTable type={activeType} filters={filters} />

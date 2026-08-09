@@ -3,7 +3,7 @@ import { fieldInput, smallButton } from './styles'
 // ContentMonster.speed / ContentRace|ContentSubrace.speed (Phase 7 §4) —
 // labeled number inputs per movement type, only showing populated ones by
 // default with an "add movement type" affordance for the rest.
-const MOVEMENT_TYPES = ['walk', 'fly', 'swim', 'climb', 'burrow']
+const MOVEMENT_TYPES = ['walk', 'fly', 'swim', 'climb', 'burrow', 'crawl']
 
 interface SpeedWidgetProps {
   value: Record<string, number>

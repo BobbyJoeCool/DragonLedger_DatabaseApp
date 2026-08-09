@@ -1,18 +1,28 @@
 import { useEffect } from 'react'
+import type { RefObject } from 'react'
 import { useBlocker } from 'react-router'
 import { Modal } from '@/components/ui/Modal'
 
 interface UnsavedChangesGuardProps {
   isDirty: boolean
+  // A form's own post-save navigate() call runs synchronously, in the same
+  // tick as the state update that would flip `isDirty` false — React hasn't
+  // re-rendered yet, so the blocker predicate below (a closure over last
+  // render's `isDirty`) would still see it as dirty and block the very
+  // navigation the save just triggered. A ref reads live at call time
+  // instead of a stale per-render snapshot, so a form can flip it
+  // synchronously right before calling navigate() after a successful save.
+  bypassRef?: RefObject<boolean>
 }
 
 // Phase 7 §1.5 — warns before discarding unsaved changes: in-app navigation
 // (React Router's data-router blocker) and closing/reloading the tab
 // (native beforeunload). Not skipped for v1 per the "marketable product"
 // framing in phase-7-edit-create-ui-final-export.md §1.5.
-export function UnsavedChangesGuard({ isDirty }: UnsavedChangesGuardProps) {
+export function UnsavedChangesGuard({ isDirty, bypassRef }: UnsavedChangesGuardProps) {
   const blocker = useBlocker(
-    ({ currentLocation, nextLocation }) => isDirty && currentLocation.pathname !== nextLocation.pathname,
+    ({ currentLocation, nextLocation }) =>
+      isDirty && !bypassRef?.current && currentLocation.pathname !== nextLocation.pathname,
   )
 
   useEffect(() => {

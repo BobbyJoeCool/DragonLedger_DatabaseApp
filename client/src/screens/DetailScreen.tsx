@@ -4,6 +4,7 @@ import { apiFetch } from '@/api/client'
 import { SourceBadge } from '@/components/browse/SourceBadge'
 import { useContentDetail } from '@/hooks/useContentDetail'
 import { apiPath } from '@/lib/contentQuery'
+import { CARD_COMPONENTS } from '@/lib/cardRegistry'
 import { CONTENT_TYPE_SINGULAR, isContentType } from '@/lib/contentTypes'
 
 interface DependentEntry {
@@ -38,6 +39,7 @@ export function DetailScreen() {
   }
 
   const label = CONTENT_TYPE_SINGULAR[type]
+  const Card = CARD_COMPONENTS[type]
 
   async function requestDelete() {
     const res = await apiFetch(`${apiPath(type!)}/${id}`, {
@@ -97,17 +99,22 @@ export function DetailScreen() {
       {entry && (
         <>
           <div className="flex items-start justify-between gap-4">
-            <div>
-              <h2 className="text-2xl font-semibold">{entry.name as string}</h2>
-              <div className="mt-2">
-                <SourceBadge sourceId={entry.sourceId as string} />
+            {Card ? (
+              <div />
+            ) : (
+              <div>
+                <h2 className="text-2xl font-semibold">{entry.name as string}</h2>
+                <div className="mt-2">
+                  <SourceBadge sourceId={entry.sourceId as string} />
+                </div>
               </div>
-            </div>
+            )}
             <div className="flex shrink-0 gap-2">
               <button
                 type="button"
                 disabled={!isSignedIn}
-                title={isSignedIn ? 'Coming in Phase 7' : 'Sign in to edit'}
+                title={isSignedIn ? undefined : 'Sign in to edit'}
+                onClick={() => navigate(`/browse/${type}/${id}/edit`)}
                 className="rounded-md border px-3 py-2 text-sm hover:bg-accent disabled:opacity-50"
               >
                 Edit
@@ -124,21 +131,25 @@ export function DetailScreen() {
             </div>
           </div>
 
-          {/* Placeholder card — the full-content, printable <Type>DetailFields
-              layout is deferred to its own design session (tasks.md Phase 5
-              item 11); this just dumps every field so nothing is hidden. */}
-          <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-2 rounded-md border p-4 text-sm">
-            {Object.entries(entry)
-              .filter(([key]) => !['id', 'name', 'sourceId', 'slug'].includes(key))
-              .map(([key, value]) => (
-                <div key={key} className="contents">
-                  <dt className="text-muted-foreground">{key}</dt>
-                  <dd className="wrap-break-word">
-                    {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                  </dd>
-                </div>
-              ))}
-          </dl>
+          {Card ? (
+            <Card entry={entry} />
+          ) : (
+            /* Placeholder card — dispatched types render through
+               cardRegistry.tsx instead; this just dumps every field for
+               whatever's still outstanding so nothing is hidden meanwhile. */
+            <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-2 rounded-md border p-4 text-sm">
+              {Object.entries(entry)
+                .filter(([key]) => !['id', 'name', 'sourceId', 'slug'].includes(key))
+                .map(([key, value]) => (
+                  <div key={key} className="contents">
+                    <dt className="text-muted-foreground">{key}</dt>
+                    <dd className="wrap-break-word">
+                      {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                    </dd>
+                  </div>
+                ))}
+            </dl>
+          )}
         </>
       )}
 
