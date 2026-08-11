@@ -69,6 +69,28 @@ describe('Content Read API — shared envelope', () => {
     expect(Object.keys(row).sort()).toEqual(['id', 'name'])
   })
 
+  it('?fields=all → bare full-row array, unbounded by the 200 max, JSON fields parsed', async () => {
+    // Scoped to a bulk-imported, non-homebrew source (not the whole table)
+    // so this doesn't race other parallel test files that create/delete
+    // homebrew spells — a filtered-but-identical query run twice in a row
+    // should be stable against concurrent writes elsewhere.
+    const query = '?source=open5e-srd-2024'
+    const all = await request(app).get(`/api/spells${query}&fields=all`)
+    const paginated = await request(app).get(`/api/spells${query}&limit=200`)
+    const row = Array.isArray(all.body) ? all.body[0] : undefined
+    const passed =
+      Array.isArray(all.body) &&
+      all.body.length === paginated.body.total &&
+      all.body.length > 200 &&
+      row &&
+      Array.isArray(row.classes)
+    logResult('GET /api/spells?fields=all', all, Boolean(passed))
+    expect(Array.isArray(all.body)).toBe(true)
+    expect(all.body.length).toBe(paginated.body.total)
+    expect(all.body.length).toBeGreaterThan(200)
+    expect(Array.isArray(row.classes)).toBe(true)
+  })
+
   it('?source= filters correctly', async () => {
     const res = await request(app).get('/api/spells?source=open5e-srd-2024&limit=5')
     const passed = res.body.data.every((s: { name: string }) => typeof s.name === 'string')

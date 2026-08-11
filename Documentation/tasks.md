@@ -574,7 +574,7 @@ here for reference:
 
 ## Phase 8 — Card Component Theming System
 
-**RESOLVED (2026-08-09) via `Documentation/phase-8-card-theming-final-export.md`**
+**COMPLETE (2026-08-10)** — design RESOLVED (2026-08-09) via `Documentation/phase-8-card-theming-final-export.md`
 — a full handoff from a separate design-only session, no open decisions.
 Deliberately sequenced *after* Phase 7: every content type gets a plain,
 functional `<Type>Form`/`<Type>Card` first (Phase 7); this phase applies
@@ -607,25 +607,43 @@ list per its §6:
        Expanded `.document` mode with Subcard-nested Subrace/Subclass),
        Monster (own width/scale logic via `useFitToPage`, per-section
        independent multi-column), Subclass/Subrace (orphaned-parent
-       fallback wired in) — see `DevTools/Claude/phase-8.md`. **Still not
-       built:** Spell/Item's 2.5x3.5in trading-card render (greedy
-       pagination sheet view) and the Monster+Spellcasting packet — both
-       are separate UI surfaces beyond a DetailScreen card swap (a
-       multi-card print sheet, and an unresolved upstream spell-matching
-       dependency per §4 item 4 of the handoff doc), not started this pass.
-5. [ ] Explicitly out of scope this phase: `ContentClassOption` card (open
-       question upstream), the source-priority settings UI, the app-wide
-       custom theme builder's settings surface, and the monster-spell-
-       matching read API — flag as separate follow-up work, don't build
-       speculatively
-6. [x] Visual pass against all 3 theme presets, done 2026-08-10 for the
-       types built in item 4 (verified live in the browser against real
-       `dev.db` data — Fireball, Adult Black Dragon, Sorcerer List+Expanded,
-       Elf Race Expanded, Alert feat — across Parchment/Scribe's Copy/
-       Grimoire). Subcard tab vertical clearance and the Grimoire print
-       fallback both confirmed visually correct. **Not yet covered:** the
-       trading-card and Monster+Spellcasting-packet visual pass, since
-       those aren't built (see item 4).
+       fallback wired in), **and, completed later the same day: Spell/
+       Item's 2.5x3.5in trading-card sheet** (greedy pagination via
+       `buildSegments`, "(cont.)" spillover, dashed cut guides, named-page
+       print CSS, triggered as a bulk "Print as Trading Cards" action from
+       Browse against whatever the current filters match) **and the
+       Monster+Spellcasting packet** (`.document` flow: MonsterCard at top
+       keeping its own fit-to-page scaling, then a spell appendix grouped
+       by frequency/level as Subcards) — see `DevTools/Claude/phase-8.md`
+       for both. All 10 render targets named in §3 of the handoff doc are
+       now built.
+5. [x] `ContentClassOption` card and the app-wide custom-theme-builder's
+       real settings surface remain explicitly out of scope, unchanged.
+       **Reconciled 2026-08-10:** the monster-spell-matching read API was
+       originally on this out-of-scope list too, but the user explicitly
+       asked for it to be built this session (case-insensitive name match,
+       Open5e > Compendium > homebrew source-priority default, unresolved
+       names render as plain text) — a deliberate scope decision made with
+       full awareness of the doc's own caution here, not an oversight. The
+       *reorderable, user-configurable* source-priority settings UI itself
+       (letting someone change the default ranking) is still unbuilt and
+       still out of scope — only the fixed-default matching logic exists.
+6. [x] Visual pass against all 3 theme presets, done 2026-08-10 for every
+       type built in item 4, including the trading-card sheet (Fireball +
+       Delayed Blast Fireball, both editions, spilling across 2 sheets with
+       working "(cont.)" pagination) and the Monster+Spellcasting packet
+       (Adult Black Dragon's At Will/1-Day-Each spells all correctly
+       resolved to real ContentSpell records with full descriptions) —
+       verified live in the browser against real `dev.db` data. Subcard tab
+       vertical clearance and the Grimoire print fallback both confirmed
+       visually correct.
+
+**Phase 8 is now complete** — every render target in the handoff doc's §3
+is built, and every item in its own §6 task list is done. The only things
+intentionally left unbuilt are the two items still flagged out of scope in
+item 5 above (`ContentClassOption`'s card, and the real settings UI for
+theme-building/source-priority-reordering), both of which need their own
+upstream design decisions this phase never had scope to make.
 
 ---
 

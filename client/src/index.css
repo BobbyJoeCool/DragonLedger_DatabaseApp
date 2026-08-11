@@ -312,3 +312,94 @@
     /* --card-accent / --card-rule (gold) stay as-is — legible on white. */
   }
 }
+
+/* -------------------------------------------------------------------------
+ * Trading card sheet — §3/§5. Real 2.5in x 3.5in physical cards, 3x3 grid
+ * per Letter sheet, dashed cut guides, never shrinks text to fit (greedy
+ * pagination onto "(cont.)" cards instead — see buildTradingCards.ts).
+ *
+ * 3 x 2.5in = 7.5in and 3 x 3.5in = 10.5in — that doesn't fit under the
+ * page-wide 0.5in @page margin above (leaves only 10in of height). Uses a
+ * named CSS page (`page: trading-cards`) to give this specific sheet its
+ * own tighter 0.25in top/bottom margin instead, matching the card grid
+ * exactly. Named pages are a Chromium/Electron print feature — the
+ * primary packaged target for this app; a plain-browser print preview on
+ * a non-Chromium engine may fall back to the default page margin.
+ * ---------------------------------------------------------------------- */
+
+@media print {
+  @page trading-cards {
+    size: letter;
+    margin: 0.25in 0.5in;
+  }
+}
+
+.dl-tc-sheet {
+  page: trading-cards;
+  display: grid;
+  grid-template-columns: repeat(3, 2.5in);
+  grid-template-rows: repeat(3, 3.5in);
+  width: 7.5in;
+  margin: 0 auto;
+  break-after: page;
+}
+
+.dl-tc-sheet:last-child {
+  break-after: auto;
+}
+
+.dl-tc-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px dashed var(--card-muted);
+  overflow: hidden;
+  padding: 8px;
+  background: var(--card-bg);
+  color: var(--card-ink);
+  font-size: 8.5px;
+  line-height: 1.25;
+}
+
+.dl-tc-header {
+  flex: none;
+}
+
+.dl-tc-title {
+  font-family: var(--card-font-display);
+  font-weight: 700;
+  font-size: 11px;
+}
+
+.dl-tc-cont {
+  color: var(--card-muted);
+  font-weight: 400;
+  font-style: italic;
+}
+
+.dl-tc-meta {
+  color: var(--card-muted);
+  font-style: italic;
+}
+
+.dl-tc-body {
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.dl-tc-body p,
+.dl-tc-body ul,
+.dl-tc-body ol {
+  margin: 0 0 4px 0;
+}
+
+.dl-tc-body ul,
+.dl-tc-body ol {
+  padding-left: 14px;
+}
+
+.dl-tc-footer {
+  flex: none;
+  border-top: 1px solid var(--card-rule);
+  padding-top: 4px;
+  margin-top: 4px;
+}

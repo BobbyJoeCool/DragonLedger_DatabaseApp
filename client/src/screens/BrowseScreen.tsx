@@ -4,6 +4,7 @@ import { ResultsTable } from '@/components/browse/ResultsTable'
 import { defaultFilters, type ContentFilters } from '@/lib/contentQuery'
 import { CONTENT_TYPES, CONTENT_TYPE_LABELS, CONTENT_TYPE_SINGULAR, type ContentType } from '@/lib/contentTypes'
 import { FILTER_BARS } from '@/lib/filterBarRegistry'
+import { PrintTradingCardsButton } from '@/components/cards/tradingCards/PrintTradingCardsButton'
 
 type BrowseState = Record<ContentType, ContentFilters>
 
@@ -53,14 +54,19 @@ export function BrowseScreen() {
             <h2 className="text-2xl font-semibold">{CONTENT_TYPE_LABELS[activeType]}</h2>
             <p className="mt-1 text-muted-foreground">Search and filter content.</p>
           </div>
-          {isSignedIn && (
-            <Link
-              to={`/browse/${activeType}/new`}
-              className="shrink-0 rounded-md border px-3 py-2 text-sm hover:bg-accent"
-            >
-              + New {CONTENT_TYPE_SINGULAR[activeType]}
-            </Link>
-          )}
+          <div className="flex shrink-0 gap-2">
+            {(activeType === 'spells' || activeType === 'items') && (
+              <PrintTradingCardsButton type={activeType} filters={filters} label={CONTENT_TYPE_LABELS[activeType]} />
+            )}
+            {isSignedIn && (
+              <Link
+                to={`/browse/${activeType}/new`}
+                className="shrink-0 rounded-md border px-3 py-2 text-sm hover:bg-accent"
+              >
+                + New {CONTENT_TYPE_SINGULAR[activeType]}
+              </Link>
+            )}
+          </div>
         </div>
         <FilterBar filters={filters} onChange={updateFilters} />
         <ResultsTable type={activeType} filters={filters} />

@@ -1,24 +1,13 @@
 import type { Spell } from '@dragonledger/content-types'
 import { SourceBadge } from '@/components/browse/SourceBadge'
-import { Divider, Shell, cardStyles, spellFooterFromExtraData } from '@/components/cards/shared'
+import { Divider, Shell, cardStyles, spellFooterFromExtraData, spellLevelSchoolLine } from '@/components/cards/shared'
 
 // Full-content, printable card (Documentation/card-design-spec.md) for a
 // single Spell — SpellForm (Phase 7 §1.6) mirrors this exact field order.
 // A separate component from SpellForm, not a shared toggle-to-edit one.
-// List mode only (`.page`) — the 2.5x3.5in trading-card render target from
-// §3 of the card-theming handoff is a separate, not-yet-built UI surface
-// (its own greedy-pagination sheet view, not a DetailScreen replacement).
-
-function ordinal(n: number): string {
-  const suffixes: Record<number, string> = { 1: 'st', 2: 'nd', 3: 'rd' }
-  const suffix = n % 100 >= 11 && n % 100 <= 13 ? 'th' : (suffixes[n % 10] ?? 'th')
-  return `${n}${suffix}`
-}
-
-function levelSchoolLine(spell: Spell): string {
-  const school = spell.school || 'unknown school'
-  return spell.level === 0 ? `${school} cantrip` : `${ordinal(spell.level)}-level ${school}`
-}
+// List mode only (`.page`) — the 2.5x3.5in trading-card render target
+// (client/src/components/cards/tradingCards/) is a separate UI surface,
+// triggered as a bulk action from Browse, not from this DetailScreen card.
 
 interface SpellExtraData {
   damageRoll?: string
@@ -70,7 +59,7 @@ export function SpellCard({ spell }: SpellCardProps) {
           {spell.name}
           {spell.ritual ? <span className="ml-2 text-base font-normal dl-muted">(ritual)</span> : null}
         </h2>
-        <p className={cardStyles.subheading}>{levelSchoolLine(spell)}</p>
+        <p className={cardStyles.subheading}>{spellLevelSchoolLine(spell.level, spell.school)}</p>
         <div className="mt-2">
           <SourceBadge sourceId={spell.sourceId} />
         </div>

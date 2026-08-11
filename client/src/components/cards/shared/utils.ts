@@ -1,6 +1,24 @@
 import type { FixedChoiceGrant, GradeEntry, GrantChoice } from '@dragonledger/content-types'
 
 // ---------------------------------------------------------------------------
+// spellLevelSchoolLine — small formatting helper duplicated identically in
+// SpellCard.tsx, the trading-card adapters, and the Monster+Spellcasting
+// packet's appendix — promoted here once all three needed it.
+// ---------------------------------------------------------------------------
+
+const ORDINAL_SUFFIXES: Record<number, string> = { 1: 'st', 2: 'nd', 3: 'rd' }
+
+export function ordinal(n: number): string {
+  const suffix = n % 100 >= 11 && n % 100 <= 13 ? 'th' : (ORDINAL_SUFFIXES[n % 10] ?? 'th')
+  return `${n}${suffix}`
+}
+
+export function spellLevelSchoolLine(level: number, school: string): string {
+  const schoolName = school || 'unknown school'
+  return level === 0 ? `${schoolName} cantrip` : `${ordinal(level)}-level ${schoolName}`
+}
+
+// ---------------------------------------------------------------------------
 // grantShapeToText — §2. Renders the "Fixed/Choice Grant Shape" schema
 // pattern ({fixed, choices:[{type:'select'|'distribute',...}]}) as display
 // text. Proven across 3 real uses: Background proficiencies/abilityBonuses,

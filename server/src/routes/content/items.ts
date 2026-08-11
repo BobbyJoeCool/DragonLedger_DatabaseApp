@@ -21,7 +21,7 @@ const writeConfig = {
 
 // GET /api/items — filters: type, rarity, source, q
 itemsRouter.get('/', async (req, res) => {
-  const { sourceIds, q, page, limit, skip, fieldsName } = parseListQuery(req)
+  const { sourceIds, q, page, limit, skip, fieldsName, fieldsAll } = parseListQuery(req)
   const { type, rarity } = req.query as Record<string, string | undefined>
 
   const where: Prisma.ContentItemWhereInput = {
@@ -38,6 +38,12 @@ itemsRouter.get('/', async (req, res) => {
       select: { id: true, name: true },
     })
     res.json(rows)
+    return
+  }
+
+  if (fieldsAll) {
+    const rows = await prisma.contentItem.findMany({ where, orderBy: { name: 'asc' } })
+    res.json(rows.map((r) => parseJsonFields(r, JSON_FIELDS)))
     return
   }
 

@@ -13,6 +13,12 @@ export interface ListQuery {
   limit: number
   skip: number
   fieldsName: boolean
+  // `?fields=all` — every matching row, full fields, unbounded by
+  // MAX_LIMIT (same no-skip/no-take shape as fieldsName's {id,name} mode,
+  // just without the `select`). Powers the trading-card print sheet and
+  // the Monster+Spellcasting packet's spell-name matching, both of which
+  // need "every row matching these filters," not one page of them.
+  fieldsAll: boolean
 }
 
 // Shared across every content type per outline.md §3.1: ?source=, ?q=,
@@ -44,6 +50,7 @@ export function parseListQuery(req: Request): ListQuery {
     limit,
     skip: (page - 1) * limit,
     fieldsName: query.fields === 'name',
+    fieldsAll: query.fields === 'all',
   }
 }
 

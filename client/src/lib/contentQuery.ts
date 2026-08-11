@@ -59,6 +59,17 @@ export function nameIndexParams(filters: ContentFilters): URLSearchParams {
   return params
 }
 
+// Every full row matching the given filters, unpaginated (`?fields=all`,
+// server-side §content/shared.ts) — for one-shot "give me everything
+// currently filtered" fetches (the trading-card print sheet, the Monster+
+// Spellcasting packet's spell-name matching) where useContentList's
+// scroll-windowed infinite-query shape doesn't apply.
+export function allFieldsParams(filters: ContentFilters): URLSearchParams {
+  const params = baseParams(filters)
+  params.set('fields', 'all')
+  return params
+}
+
 // Stable key fragment shared by useContentList/useContentNameIndex — sorted
 // sourceIds so checkbox-toggle order never produces spurious cache misses.
 export function filterKey(type: ContentType, filters: ContentFilters) {

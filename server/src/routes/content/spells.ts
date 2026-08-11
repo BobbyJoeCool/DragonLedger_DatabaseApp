@@ -21,7 +21,7 @@ const writeConfig = {
 
 // GET /api/spells — filters: source, q, level, school, class
 spellsRouter.get('/', async (req, res) => {
-  const { sourceIds, q, page, limit, skip, fieldsName } = parseListQuery(req)
+  const { sourceIds, q, page, limit, skip, fieldsName, fieldsAll } = parseListQuery(req)
   const { level, school, class: className } = req.query as Record<string, string | undefined>
 
   if (level !== undefined && Number.isNaN(Number.parseInt(level, 10))) {
@@ -46,6 +46,12 @@ spellsRouter.get('/', async (req, res) => {
       select: { id: true, name: true },
     })
     res.json(rows)
+    return
+  }
+
+  if (fieldsAll) {
+    const rows = await prisma.contentSpell.findMany({ where, orderBy: { name: 'asc' } })
+    res.json(rows.map((r) => parseJsonFields(r, JSON_FIELDS)))
     return
   }
 

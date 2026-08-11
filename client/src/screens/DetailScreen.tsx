@@ -8,6 +8,8 @@ import { CARD_COMPONENTS } from '@/lib/cardRegistry'
 import { CONTENT_TYPE_SINGULAR, isContentType } from '@/lib/contentTypes'
 import { ThemeSelect } from '@/components/cards/ThemeSelect'
 import { CardThemeProvider, type CardThemeName } from '@/components/cards/shared'
+import { MonsterSpellcastingPacket } from '@/components/cards/monsterPacket/MonsterSpellcastingPacket'
+import type { Monster } from '@dragonledger/content-types'
 
 interface DependentEntry {
   type: string
@@ -29,6 +31,7 @@ export function DetailScreen() {
   const [deleteState, setDeleteState] = useState<DeleteState>({ step: 'idle' })
   const [cardTheme, setCardTheme] = useState<CardThemeName>('parchment')
   const [expanded, setExpanded] = useState(false)
+  const [spellcastingPacket, setSpellcastingPacket] = useState(false)
   const isSignedIn = Boolean(sessionStorage.getItem('app-password'))
 
   const type = rawType && isContentType(rawType) ? rawType : undefined
@@ -44,6 +47,9 @@ export function DetailScreen() {
 
   const label = CONTENT_TYPE_SINGULAR[type]
   const Card = CARD_COMPONENTS[type]
+  const hasSpellcasting =
+    type === 'monsters' &&
+    Boolean((entry?.extraData as { spellcasting?: unknown } | undefined)?.spellcasting)
 
   async function requestDelete() {
     const res = await apiFetch(`${apiPath(type!)}/${id}`, {
@@ -125,6 +131,16 @@ export function DetailScreen() {
                   {expanded ? 'List view' : 'Expanded view'}
                 </button>
               )}
+              {hasSpellcasting && (
+                <button
+                  type="button"
+                  onClick={() => setSpellcastingPacket((p) => !p)}
+                  className="rounded-md border px-3 py-2 text-sm hover:bg-accent"
+                  title="Toggle the Spellcasting Packet (monster + matched spell appendix)"
+                >
+                  {spellcastingPacket ? 'Card view' : 'Spellcasting Packet'}
+                </button>
+              )}
               <button
                 type="button"
                 disabled={!isSignedIn}
@@ -148,7 +164,11 @@ export function DetailScreen() {
 
           {Card ? (
             <CardThemeProvider theme={cardTheme}>
-              <Card entry={entry} mode={expanded ? 'expanded' : 'list'} />
+              {spellcastingPacket && hasSpellcasting ? (
+                <MonsterSpellcastingPacket monster={entry as unknown as Monster} />
+              ) : (
+                <Card entry={entry} mode={expanded ? 'expanded' : 'list'} />
+              )}
             </CardThemeProvider>
           ) : (
             /* Placeholder card — dispatched types render through

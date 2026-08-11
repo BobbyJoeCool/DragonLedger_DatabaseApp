@@ -22,3 +22,11 @@ export const FIT_SCALE_FLOOR = 0.55
 // A half-width card must leave room for a second half-width card on the
 // same physical page, not just fit under the full-page cap on its own.
 export const HALF_WIDTH_FRACTION = 0.55
+
+// Trading card (§3/§5) — real 2.5in x 3.5in physical dimensions, 3x3 grid
+// per sheet. Character-count budget per card body (not a real pixel
+// measurement like useFitToPage's ResizeObserver approach) — a pragmatic
+// first pass; a DOM-measured version is a reasonable follow-up once this
+// is visually tuned against real content.
+export const TRADING_CARD_CHAR_BUDGET = 420
+export const TRADING_CARDS_PER_SHEET = 9
