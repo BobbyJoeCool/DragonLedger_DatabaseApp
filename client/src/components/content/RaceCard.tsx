@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router'
-import type { Race } from '@dragonledger/content-types'
+import type { Race, Subrace } from '@dragonledger/content-types'
 import { apiFetch } from '@/api/client'
 import { SourceBadge } from '@/components/browse/SourceBadge'
+import { Divider, Shell, Subcard, cardStyles } from '@/components/cards/shared'
 
 interface RaceExtraData {
   rawAbility?: string
@@ -33,7 +34,7 @@ function RaceSubracesList({ raceId }: { raceId: string }) {
   return (
     <div className="text-sm">
       <div className="flex items-center justify-between">
-        <p className="font-medium">Subraces</p>
+        <p className={cardStyles.sectionLabel}>Subraces</p>
         {isSignedIn && (
           <Link
             to={`/browse/races/${raceId}/subraces/new`}
@@ -54,8 +55,68 @@ function RaceSubracesList({ raceId }: { raceId: string }) {
           ))}
         </ul>
       ) : (
-        <p className="text-muted-foreground">None yet.</p>
+        <p className="dl-muted">None yet.</p>
       )}
+    </div>
+  )
+}
+
+type SubraceRow = Subrace & { id: string }
+
+function SubraceSubcard({ subrace }: { subrace: SubraceRow }) {
+  return (
+    <Subcard tabLabel="Subrace">
+      <p className={cardStyles.entryName}>{subrace.name}</p>
+      {(subrace.size || subrace.speed) && (
+        <dl className={cardStyles.detailGrid}>
+          {subrace.size && (
+            <div className={cardStyles.detailRow}>
+              <dt className={cardStyles.detailLabel}>Size</dt>
+              <dd>{subrace.size.join(', ')}</dd>
+            </div>
+          )}
+          {subrace.speed && (
+            <div className={cardStyles.detailRow}>
+              <dt className={cardStyles.detailLabel}>Speed</dt>
+              <dd>Walk {subrace.speed.walk}</dd>
+            </div>
+          )}
+        </dl>
+      )}
+      {subrace.traits.length > 0 && (
+        <div className="mt-1 space-y-1 text-sm">
+          {subrace.traits.map((t, i) => (
+            <p key={i}>
+              <span className={cardStyles.entryName}>{t.name}.</span> {t.description}
+            </p>
+          ))}
+        </div>
+      )}
+    </Subcard>
+  )
+}
+
+// Expanded mode fetches full Subrace records (not the {id,name} index the
+// List mode's linked list uses) so each one can render as a full nested
+// Subcard — see §3 of the handoff doc.
+function RaceSubracesExpanded({ raceId }: { raceId: string }) {
+  const { data } = useQuery({
+    queryKey: ['subraces-of-race-full', raceId],
+    queryFn: async (): Promise<SubraceRow[]> => {
+      const res = await apiFetch(`/api/subraces?raceId=${raceId}`)
+      if (!res.ok) throw new Error('Failed to load subraces')
+      const body = (await res.json()) as { data: SubraceRow[] }
+      return body.data
+    },
+  })
+
+  if (!data || data.length === 0) return null
+
+  return (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      {data.map((s) => (
+        <SubraceSubcard key={s.id} subrace={s} />
+      ))}
     </div>
   )
 }
@@ -67,28 +128,33 @@ interface RaceCardProps {
   // rather than pretending `Race` has it.
   race: Race
   id: string
+  /** List (`.page`) is the default DetailScreen view; Expanded (`.document`)
+   *  nests full Subrace cards via Subcard instead of a linked list. */
+  mode?: 'list' | 'expanded'
 }
 
-export function RaceCard({ race, id }: RaceCardProps) {
+export function RaceCard({ race, id, mode = 'list' }: RaceCardProps) {
   const extra = (race.extraData ?? {}) as RaceExtraData
   const hasAdvanced = extra.rawAbility || extra.creatureType || extra.rawProficiency || extra.rawResist || extra.rawWeapons
 
   return (
-    <div className="space-y-4 rounded-md border p-6 print:border-none">
+    <Shell mode={mode === 'expanded' ? 'document' : 'page'} frameClassName="space-y-3">
       <div>
-        <h2 className="text-2xl font-semibold">{race.name}</h2>
+        <h2 className={cardStyles.cardHeading}>{race.name}</h2>
         <div className="mt-2">
           <SourceBadge sourceId={race.sourceId} />
         </div>
       </div>
 
-      <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-sm">
-        <div className="contents">
-          <dt className="text-muted-foreground">Size</dt>
+      <Divider variant="major" />
+
+      <dl className={cardStyles.detailGrid}>
+        <div className={cardStyles.detailRow}>
+          <dt className={cardStyles.detailLabel}>Size</dt>
           <dd>{race.size.join(', ')}</dd>
         </div>
-        <div className="contents">
-          <dt className="text-muted-foreground">Speed</dt>
+        <div className={cardStyles.detailRow}>
+          <dt className={cardStyles.detailLabel}>Speed</dt>
           <dd>
             {[
               `Walk ${race.speed.walk}`,
@@ -102,64 +168,72 @@ export function RaceCard({ race, id }: RaceCardProps) {
       </dl>
 
       {race.traits.length > 0 && (
-        <div className="space-y-2 text-sm">
-          <p className="font-medium">Traits</p>
-          {race.traits.map((t, i) => (
-            <div key={i}>
-              <p className="font-medium">
-                {t.name} <span className="font-normal text-muted-foreground">(level {t.level})</span>
-              </p>
-              <p className="leading-relaxed">{t.description}</p>
-            </div>
-          ))}
-        </div>
+        <>
+          <Divider variant="minor" />
+          <div className="space-y-2 text-sm">
+            <p className={cardStyles.sectionLabel}>Traits</p>
+            {race.traits.map((t, i) => (
+              <div key={i}>
+                <p className={cardStyles.entryName}>
+                  {t.name} <span className="font-normal dl-muted">(level {t.level})</span>
+                </p>
+                <p className="leading-relaxed">{t.description}</p>
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
-      <div className="space-y-2 text-sm leading-relaxed">
+      <Divider variant="minor" />
+      <div className={cardStyles.proseSection}>
         {race.description.split('\n').map((paragraph, i) => (
           <p key={i}>{paragraph}</p>
         ))}
       </div>
 
-      <RaceSubracesList raceId={id} />
+      <Divider variant="minor" />
+      {mode === 'expanded' ? <RaceSubracesExpanded raceId={id} /> : <RaceSubracesList raceId={id} />}
 
       {hasAdvanced && (
-        <div className="space-y-1 border-t pt-3 text-sm">
-          <p className="font-medium">Additional Details</p>
-          <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1">
-            {extra.creatureType && (
-              <div className="contents">
-                <dt className="text-muted-foreground">Creature Type</dt>
-                <dd>{extra.creatureType}</dd>
-              </div>
-            )}
-            {extra.rawAbility && (
-              <div className="contents">
-                <dt className="text-muted-foreground">Ability (raw)</dt>
-                <dd>{extra.rawAbility}</dd>
-              </div>
-            )}
-            {extra.rawProficiency && (
-              <div className="contents">
-                <dt className="text-muted-foreground">Proficiency (raw)</dt>
-                <dd>{extra.rawProficiency}</dd>
-              </div>
-            )}
-            {extra.rawResist && (
-              <div className="contents">
-                <dt className="text-muted-foreground">Resistance (raw)</dt>
-                <dd>{extra.rawResist}</dd>
-              </div>
-            )}
-            {extra.rawWeapons && (
-              <div className="contents">
-                <dt className="text-muted-foreground">Weapons (raw)</dt>
-                <dd>{extra.rawWeapons}</dd>
-              </div>
-            )}
-          </dl>
-        </div>
+        <>
+          <Divider variant="minor" />
+          <div className={cardStyles.additionalDetailsWrap}>
+            <p className={cardStyles.sectionLabel}>Additional Details</p>
+            <dl className={cardStyles.detailGrid}>
+              {extra.creatureType && (
+                <div className={cardStyles.detailRow}>
+                  <dt className={cardStyles.detailLabel}>Creature Type</dt>
+                  <dd>{extra.creatureType}</dd>
+                </div>
+              )}
+              {extra.rawAbility && (
+                <div className={cardStyles.detailRow}>
+                  <dt className={cardStyles.detailLabel}>Ability (raw)</dt>
+                  <dd>{extra.rawAbility}</dd>
+                </div>
+              )}
+              {extra.rawProficiency && (
+                <div className={cardStyles.detailRow}>
+                  <dt className={cardStyles.detailLabel}>Proficiency (raw)</dt>
+                  <dd>{extra.rawProficiency}</dd>
+                </div>
+              )}
+              {extra.rawResist && (
+                <div className={cardStyles.detailRow}>
+                  <dt className={cardStyles.detailLabel}>Resistance (raw)</dt>
+                  <dd>{extra.rawResist}</dd>
+                </div>
+              )}
+              {extra.rawWeapons && (
+                <div className={cardStyles.detailRow}>
+                  <dt className={cardStyles.detailLabel}>Weapons (raw)</dt>
+                  <dd>{extra.rawWeapons}</dd>
+                </div>
+              )}
+            </dl>
+          </div>
+        </>
       )}
-    </div>
+    </Shell>
   )
 }

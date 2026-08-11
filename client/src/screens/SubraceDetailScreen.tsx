@@ -3,6 +3,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router'
 import { apiFetch } from '@/api/client'
 import { SubraceCard } from '@/components/content/SubraceCard'
+import { ThemeSelect } from '@/components/cards/ThemeSelect'
+import { CardThemeProvider, type CardThemeName } from '@/components/cards/shared'
 
 // /browse/subraces/:id — Subrace is nested-only (reached from a Race's
 // card), so this is a small dedicated screen rather than going through
@@ -13,6 +15,7 @@ export function SubraceDetailScreen() {
   const queryClient = useQueryClient()
   const [confirming, setConfirming] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [cardTheme, setCardTheme] = useState<CardThemeName>('parchment')
   const isSignedIn = Boolean(sessionStorage.getItem('app-password'))
 
   const { data: entry, isLoading } = useQuery({
@@ -64,6 +67,7 @@ export function SubraceDetailScreen() {
       {entry && (
         <>
           <div className="flex justify-end gap-2">
+            <ThemeSelect value={cardTheme} onChange={setCardTheme} />
             <button
               type="button"
               disabled={!isSignedIn}
@@ -81,7 +85,9 @@ export function SubraceDetailScreen() {
               Delete
             </button>
           </div>
-          <SubraceCard subrace={entry as unknown as import('@dragonledger/content-types').Subrace} />
+          <CardThemeProvider theme={cardTheme}>
+            <SubraceCard subrace={entry as unknown as import('@dragonledger/content-types').Subrace} />
+          </CardThemeProvider>
         </>
       )}
 

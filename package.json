@@ -1,7 +1,7 @@
 {
   "name": "dragonledger-databaseapp",
   "private": true,
-  "version": "0.7.0",
+  "version": "0.7.75",
   "workspaces": [
     "packages/content-types",
     "client",
@@ -18,7 +18,7 @@
     "electron:start": "npm run build && electron electron/dist/main.js",
     "electron:package": "npm run build && electron-builder --config electron-builder.yml",
     "lint": "npm run lint --workspaces --if-present",
-    "test": "npm run test --workspace=server --if-present",
+    "test": "npm run test --workspace=server --if-present && npm run test --workspace=client --if-present",
     "test:e2e": "playwright test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

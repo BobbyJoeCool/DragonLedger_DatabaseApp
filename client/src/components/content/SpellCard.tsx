@@ -1,9 +1,13 @@
 import type { Spell } from '@dragonledger/content-types'
 import { SourceBadge } from '@/components/browse/SourceBadge'
+import { Divider, Shell, cardStyles, spellFooterFromExtraData } from '@/components/cards/shared'
 
 // Full-content, printable card (Documentation/card-design-spec.md) for a
 // single Spell — SpellForm (Phase 7 §1.6) mirrors this exact field order.
 // A separate component from SpellForm, not a shared toggle-to-edit one.
+// List mode only (`.page`) — the 2.5x3.5in trading-card render target from
+// §3 of the card-theming handoff is a separate, not-yet-built UI surface
+// (its own greedy-pagination sheet view, not a DetailScreen replacement).
 
 function ordinal(n: number): string {
   const suffixes: Record<number, string> = { 1: 'st', 2: 'nd', 3: 'rd' }
@@ -34,8 +38,8 @@ interface SpellExtraData {
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="contents">
-      <dt className="text-muted-foreground">{label}</dt>
+    <div className={cardStyles.detailRow}>
+      <dt className={cardStyles.detailLabel}>{label}</dt>
       <dd>{value}</dd>
     </div>
   )
@@ -47,32 +51,34 @@ interface SpellCardProps {
 
 export function SpellCard({ spell }: SpellCardProps) {
   const extra = (spell.extraData ?? {}) as SpellExtraData
+  const footer = spellFooterFromExtraData(spell.extraData)
   const hasAdvancedDetails =
-    extra.damageRoll ||
-    extra.damageTypes ||
-    extra.savingThrow ||
+    footer.damage ||
+    footer.save ||
+    footer.area ||
     extra.attackRoll ||
     extra.targetType ||
-    extra.shapeType ||
     extra.reactionCondition ||
     extra.materialCost ||
     extra.materialConsumed ||
     (extra.scaling && extra.scaling.length > 0)
 
   return (
-    <div className="space-y-4 rounded-md border p-6 print:border-none">
+    <Shell mode="page" frameClassName="space-y-3">
       <div>
-        <h2 className="text-2xl font-semibold">
+        <h2 className={cardStyles.cardHeading}>
           {spell.name}
-          {spell.ritual ? <span className="ml-2 text-base font-normal text-muted-foreground">(ritual)</span> : null}
+          {spell.ritual ? <span className="ml-2 text-base font-normal dl-muted">(ritual)</span> : null}
         </h2>
-        <p className="italic text-muted-foreground">{levelSchoolLine(spell)}</p>
+        <p className={cardStyles.subheading}>{levelSchoolLine(spell)}</p>
         <div className="mt-2">
           <SourceBadge sourceId={spell.sourceId} />
         </div>
       </div>
 
-      <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-sm">
+      <Divider variant="major" />
+
+      <dl className={cardStyles.detailGrid}>
         <DetailRow label="Casting Time" value={spell.castingTime} />
         <DetailRow label="Range" value={spell.range} />
         <DetailRow
@@ -86,7 +92,9 @@ export function SpellCard({ spell }: SpellCardProps) {
         <DetailRow label="Classes" value={spell.classes.join(', ') || '—'} />
       </dl>
 
-      <div className="space-y-2 text-sm leading-relaxed">
+      <Divider variant="minor" />
+
+      <div className={cardStyles.proseSection}>
         {spell.description.split('\n').map((paragraph, i) => (
           <p key={i}>{paragraph}</p>
         ))}
@@ -94,55 +102,52 @@ export function SpellCard({ spell }: SpellCardProps) {
 
       {spell.higherLevels && (
         <div className="text-sm leading-relaxed">
-          <p className="font-medium">At Higher Levels</p>
+          <p className={cardStyles.sectionLabel}>At Higher Levels</p>
           <p>{spell.higherLevels}</p>
         </div>
       )}
 
       {hasAdvancedDetails && (
-        <div className="space-y-1 border-t pt-3 text-sm">
-          <p className="font-medium">Additional Details</p>
-          <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1">
-            {extra.damageRoll && (
-              <DetailRow
-                label="Damage"
-                value={`${extra.damageRoll}${extra.damageTypes ? ` ${extra.damageTypes.join('/')}` : ''}`}
-              />
+        <>
+          <Divider variant="minor" />
+          <div className={cardStyles.additionalDetailsWrap}>
+            <p className={cardStyles.sectionLabel}>Additional Details</p>
+            <dl className={cardStyles.detailGrid}>
+              {footer.damage && (
+                <DetailRow label="Damage" value={`${footer.damage.roll} ${footer.damage.types.join('/')}`} />
+              )}
+              {footer.save && <DetailRow label="Saving Throw" value={footer.save} />}
+              {extra.attackRoll && <DetailRow label="Attack Roll" value="Yes" />}
+              {extra.targetType && (
+                <DetailRow label="Target" value={`${extra.targetCount ?? ''} ${extra.targetType}`.trim()} />
+              )}
+              {footer.area && (
+                <DetailRow
+                  label="Area"
+                  value={`${footer.area.shapeSize} ${footer.area.shapeSizeUnit ?? ''} ${footer.area.shapeType}`.trim()}
+                />
+              )}
+              {extra.reactionCondition && <DetailRow label="Reaction Trigger" value={extra.reactionCondition} />}
+              {extra.materialCost && <DetailRow label="Material Cost" value={extra.materialCost} />}
+              {extra.materialConsumed && <DetailRow label="Material Consumed" value="Yes" />}
+            </dl>
+            {extra.scaling && extra.scaling.length > 0 && (
+              <div>
+                <p className={'mt-2 ' + cardStyles.sectionLabel}>Scaling</p>
+                <ul className="list-inside list-disc">
+                  {extra.scaling.map((entry, i) => (
+                    <li key={i}>
+                      {entry.trigger === 'character_level' ? 'Character level' : 'Slot level'}{' '}
+                      {entry.triggerValue ?? '?'}: {entry.dice}
+                      {entry.description ? ` — ${entry.description}` : ''}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
-            {extra.savingThrow && <DetailRow label="Saving Throw" value={extra.savingThrow} />}
-            {extra.attackRoll && <DetailRow label="Attack Roll" value="Yes" />}
-            {extra.targetType && (
-              <DetailRow
-                label="Target"
-                value={`${extra.targetCount ?? ''} ${extra.targetType}`.trim()}
-              />
-            )}
-            {extra.shapeType && (
-              <DetailRow
-                label="Area"
-                value={`${extra.shapeSize ?? ''} ${extra.shapeSizeUnit ?? ''} ${extra.shapeType}`.trim()}
-              />
-            )}
-            {extra.reactionCondition && <DetailRow label="Reaction Trigger" value={extra.reactionCondition} />}
-            {extra.materialCost && <DetailRow label="Material Cost" value={extra.materialCost} />}
-            {extra.materialConsumed && <DetailRow label="Material Consumed" value="Yes" />}
-          </dl>
-          {extra.scaling && extra.scaling.length > 0 && (
-            <div>
-              <p className="mt-2 font-medium">Scaling</p>
-              <ul className="list-inside list-disc">
-                {extra.scaling.map((entry, i) => (
-                  <li key={i}>
-                    {entry.trigger === 'character_level' ? 'Character level' : 'Slot level'}{' '}
-                    {entry.triggerValue ?? '?'}: {entry.dice}
-                    {entry.description ? ` — ${entry.description}` : ''}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
+          </div>
+        </>
       )}
-    </div>
+    </Shell>
   )
 }

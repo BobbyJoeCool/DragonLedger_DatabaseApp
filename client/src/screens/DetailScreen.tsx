@@ -6,6 +6,8 @@ import { useContentDetail } from '@/hooks/useContentDetail'
 import { apiPath } from '@/lib/contentQuery'
 import { CARD_COMPONENTS } from '@/lib/cardRegistry'
 import { CONTENT_TYPE_SINGULAR, isContentType } from '@/lib/contentTypes'
+import { ThemeSelect } from '@/components/cards/ThemeSelect'
+import { CardThemeProvider, type CardThemeName } from '@/components/cards/shared'
 
 interface DependentEntry {
   type: string
@@ -25,6 +27,8 @@ export function DetailScreen() {
   const { type: rawType, id } = useParams()
   const navigate = useNavigate()
   const [deleteState, setDeleteState] = useState<DeleteState>({ step: 'idle' })
+  const [cardTheme, setCardTheme] = useState<CardThemeName>('parchment')
+  const [expanded, setExpanded] = useState(false)
   const isSignedIn = Boolean(sessionStorage.getItem('app-password'))
 
   const type = rawType && isContentType(rawType) ? rawType : undefined
@@ -109,7 +113,18 @@ export function DetailScreen() {
                 </div>
               </div>
             )}
-            <div className="flex shrink-0 gap-2">
+            <div className="flex shrink-0 items-center gap-2">
+              <ThemeSelect value={cardTheme} onChange={setCardTheme} />
+              {(type === 'races' || type === 'classes') && (
+                <button
+                  type="button"
+                  onClick={() => setExpanded((e) => !e)}
+                  className="rounded-md border px-3 py-2 text-sm hover:bg-accent"
+                  title="Toggle the full-content Expanded view (nests Subrace/Subclass cards)"
+                >
+                  {expanded ? 'List view' : 'Expanded view'}
+                </button>
+              )}
               <button
                 type="button"
                 disabled={!isSignedIn}
@@ -132,7 +147,9 @@ export function DetailScreen() {
           </div>
 
           {Card ? (
-            <Card entry={entry} />
+            <CardThemeProvider theme={cardTheme}>
+              <Card entry={entry} mode={expanded ? 'expanded' : 'list'} />
+            </CardThemeProvider>
           ) : (
             /* Placeholder card — dispatched types render through
                cardRegistry.tsx instead; this just dumps every field for

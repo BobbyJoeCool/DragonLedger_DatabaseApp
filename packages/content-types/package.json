@@ -1,7 +1,7 @@
 {
   "name": "@dragonledger/content-types",
   "private": true,
-  "version": "0.7.0",
+  "version": "0.7.75",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

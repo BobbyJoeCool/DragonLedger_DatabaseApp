@@ -1,5 +1,6 @@
 import type { Item } from '@dragonledger/content-types'
 import { SourceBadge } from '@/components/browse/SourceBadge'
+import { Divider, Shell, cardStyles } from '@/components/cards/shared'
 
 // Weapon fields vs. wondrous-item fields populate almost disjoint sets —
 // every stat row below hides when empty rather than reserving fixed space.
@@ -19,8 +20,8 @@ interface ItemExtraData {
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="contents">
-      <dt className="text-muted-foreground">{label}</dt>
+    <div className={cardStyles.detailRow}>
+      <dt className={cardStyles.detailLabel}>{label}</dt>
       <dd>{value}</dd>
     </div>
   )
@@ -41,10 +42,10 @@ export function ItemCard({ item }: ItemCardProps) {
     extra.attunementDetail
 
   return (
-    <div className="space-y-4 rounded-md border p-6 print:border-none">
+    <Shell mode="page" frameClassName="space-y-3">
       <div>
-        <h2 className="text-2xl font-semibold">{item.name}</h2>
-        <p className="italic text-muted-foreground">
+        <h2 className={cardStyles.cardHeading}>{item.name}</h2>
+        <p className={cardStyles.subheading}>
           {item.itemType}
           {item.rarity ? `, ${item.rarity}` : ''}
           {item.requiresAttunement ? ' (requires attunement)' : ''}
@@ -54,7 +55,9 @@ export function ItemCard({ item }: ItemCardProps) {
         </div>
       </div>
 
-      <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-sm">
+      <Divider variant="major" />
+
+      <dl className={cardStyles.detailGrid}>
         {item.cost && <DetailRow label="Cost" value={item.cost} />}
         {item.weight && <DetailRow label="Weight" value={item.weight} />}
         {item.damage && <DetailRow label="Damage" value={item.damage} />}
@@ -67,29 +70,38 @@ export function ItemCard({ item }: ItemCardProps) {
         )}
       </dl>
 
-      <div className="space-y-2 text-sm leading-relaxed">
+      <Divider variant="minor" />
+
+      <div className={cardStyles.proseSection}>
         {item.description.split('\n').map((paragraph, i) => (
           <p key={i}>{paragraph}</p>
         ))}
       </div>
 
       {hasAdvanced && (
-        <div className="space-y-1 border-t pt-3 text-sm">
-          <p className="font-medium">Additional Details</p>
-          <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1">
-            {extra.size && <DetailRow label="Size" value={extra.size} />}
-            {extra.range && <DetailRow label="Range" value={extra.range} />}
-            {extra.strRequired !== undefined && <DetailRow label="Strength Required" value={String(extra.strRequired)} />}
-            {extra.maxDexBonus !== undefined && <DetailRow label="Max Dex Bonus" value={String(extra.maxDexBonus)} />}
-            {extra.acDisplay && <DetailRow label="AC" value={extra.acDisplay} />}
-            {extra.attunementDetail && <DetailRow label="Attunement" value={extra.attunementDetail} />}
-            {extra.stealthDisadvantage && <DetailRow label="Stealth Disadvantage" value="Yes" />}
-            {extra.isSimple && <DetailRow label="Weapon Category" value="Simple" />}
-            {extra.isMartial && <DetailRow label="Weapon Category" value="Martial" />}
-            {extra.isImprovised && <DetailRow label="Improvised" value="Yes" />}
-          </dl>
-        </div>
+        <>
+          <Divider variant="minor" />
+          <div className={cardStyles.additionalDetailsWrap}>
+            <p className={cardStyles.sectionLabel}>Additional Details</p>
+            <dl className={cardStyles.detailGrid}>
+              {extra.size && <DetailRow label="Size" value={extra.size} />}
+              {extra.range && <DetailRow label="Range" value={extra.range} />}
+              {extra.strRequired !== undefined && (
+                <DetailRow label="Strength Required" value={String(extra.strRequired)} />
+              )}
+              {extra.maxDexBonus !== undefined && (
+                <DetailRow label="Max Dex Bonus" value={String(extra.maxDexBonus)} />
+              )}
+              {extra.acDisplay && <DetailRow label="AC" value={extra.acDisplay} />}
+              {extra.attunementDetail && <DetailRow label="Attunement" value={extra.attunementDetail} />}
+              {extra.stealthDisadvantage && <DetailRow label="Stealth Disadvantage" value="Yes" />}
+              {extra.isSimple && <DetailRow label="Weapon Category" value="Simple" />}
+              {extra.isMartial && <DetailRow label="Weapon Category" value="Martial" />}
+              {extra.isImprovised && <DetailRow label="Improvised" value="Yes" />}
+            </dl>
+          </div>
+        </>
       )}
-    </div>
+    </Shell>
   )
 }

@@ -128,3 +128,187 @@
     @apply font-sans;
     }
 }
+
+/* -------------------------------------------------------------------------
+ * Card component system — Documentation/phase-8-card-theming-final-export.md
+ *
+ * Uses its own --card-* custom-property namespace (bg/accent/ink/muted/rule
+ * + 2 font slots), scoped by CardThemeProvider (client/src/components/
+ * cards/shared/ThemeProvider.tsx) via a [data-card-theme] wrapper — never
+ * the app-wide shadcn tokens above (--accent, --muted, etc. already mean
+ * something else: app chrome, not a printable card's own palette).
+ * ---------------------------------------------------------------------- */
+
+@media print {
+  @page {
+    size: letter;
+    margin: 0.5in;
+  }
+}
+
+.dl-card-theme {
+  background: var(--card-bg);
+  color: var(--card-ink);
+  font-family: var(--card-font-body);
+  position: relative;
+}
+
+.dl-font-display {
+  font-family: var(--card-font-display);
+}
+
+.dl-font-body {
+  font-family: var(--card-font-body);
+}
+
+.dl-muted {
+  color: var(--card-muted);
+}
+
+.dl-accent {
+  color: var(--card-accent);
+}
+
+/* Shell / Page — §1.1. `.dl-shell-page` caps at one Letter sheet;
+   `.dl-shell-document` flows uncapped (print CSS paginates via
+   break-inside on individual blocks instead of a container height cap). */
+.dl-shell-page,
+.dl-shell-document {
+  width: 8.5in;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+.dl-frame {
+  position: relative;
+  border: 2.5px solid var(--card-rule);
+  outline: 1px solid var(--card-rule);
+  outline-offset: 4px;
+  overflow: hidden;
+  break-inside: avoid;
+  page-break-inside: avoid;
+  padding: 14px;
+}
+
+/* Parchment's procedural SVG turbulence texture — non-editable on the
+   locked preset, absent on every other theme/custom build. */
+.dl-parchment-texture {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.12;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Divider — §1.3. */
+.dl-divider {
+  width: 100%;
+}
+
+.dl-divider-major {
+  height: 6px;
+  background: var(--card-accent);
+  clip-path: polygon(0% 50%, 6% 0%, 94% 0%, 100% 50%, 94% 100%, 6% 100%);
+  margin: 12px 0;
+}
+
+.dl-divider-minor {
+  height: 3px;
+  background: var(--card-rule);
+  margin: 8px 0;
+}
+
+.dl-divider-span {
+  column-span: all;
+}
+
+/* Subcard — §1.4. Filled tab by default (Parchment/Grimoire); Scribe's
+   Copy and custom themes use an outlined tab instead (grayscale-safe). */
+.dl-subcard {
+  position: relative;
+  border: 1.5px solid var(--card-rule);
+  /* Real vertical clearance above the tab's -9px offset lives here, on the
+     component itself, so no call site has to remember to add margin
+     before a Subcard — this was a real production bug during the demo
+     phase (§1.4). */
+  margin-top: 16px;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.dl-subcard-tab {
+  position: absolute;
+  top: -9px;
+  left: 10px;
+  padding: 0 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  background: var(--card-accent);
+  color: var(--card-bg);
+}
+
+[data-card-theme='scribe'] .dl-subcard-tab,
+[data-card-theme='custom'] .dl-subcard-tab {
+  background: var(--card-bg);
+  color: var(--card-accent);
+  border: 1.5px solid var(--card-accent);
+}
+
+.dl-subcard-body {
+  padding: 10px;
+}
+
+/* useFitToPage width tiers (§1.5) — the monster-mode half/full candidates. */
+.dl-fit-half {
+  width: 50%;
+}
+
+.dl-fit-full {
+  width: 100%;
+}
+
+/* Per-section independent multi-column (§3/§5, Monster) — each section owns
+   its own container rather than one shared multi-column flow, per the
+   real cross-browser bug fix noted in the decision log. */
+.dl-section-cols {
+  column-gap: 20px;
+}
+
+.dl-cols-1 {
+  column-count: 1;
+}
+
+.dl-cols-2 {
+  column-count: 2;
+}
+
+.dl-column-break {
+  break-before: column;
+}
+
+.dl-column-span {
+  column-span: all;
+}
+
+/* Orphaned-parent fallback (§2) — shared between standalone Subclass and Subrace rendering. */
+.dl-orphan-meta {
+  color: var(--card-muted);
+  font-style: italic;
+}
+
+.dl-orphan-meta-line {
+  margin-bottom: 8px;
+}
+
+/* Grimoire auto-flips to an ink-safe light fallback on print — a dark
+   background is not print-safe (§1.2). */
+@media print {
+  [data-card-theme='grimoire'] {
+    --card-bg: #ffffff;
+    --card-ink: #111111;
+    --card-muted: #4b4b4b;
+    /* --card-accent / --card-rule (gold) stay as-is — legible on white. */
+  }
+}

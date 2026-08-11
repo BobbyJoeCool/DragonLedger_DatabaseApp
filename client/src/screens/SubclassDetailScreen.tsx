@@ -3,6 +3,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router'
 import { apiFetch } from '@/api/client'
 import { SubclassCard } from '@/components/content/SubclassCard'
+import { ThemeSelect } from '@/components/cards/ThemeSelect'
+import { CardThemeProvider, type CardThemeName } from '@/components/cards/shared'
 
 // /browse/subclasses/:id — Subclass is nested-only (reached from a Class's
 // card), same pattern as SubraceDetailScreen.
@@ -12,6 +14,7 @@ export function SubclassDetailScreen() {
   const queryClient = useQueryClient()
   const [confirming, setConfirming] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [cardTheme, setCardTheme] = useState<CardThemeName>('parchment')
   const isSignedIn = Boolean(sessionStorage.getItem('app-password'))
 
   const { data: entry, isLoading } = useQuery({
@@ -63,6 +66,7 @@ export function SubclassDetailScreen() {
       {entry && (
         <>
           <div className="flex justify-end gap-2">
+            <ThemeSelect value={cardTheme} onChange={setCardTheme} />
             <button
               type="button"
               disabled={!isSignedIn}
@@ -80,7 +84,9 @@ export function SubclassDetailScreen() {
               Delete
             </button>
           </div>
-          <SubclassCard subclass={entry as unknown as import('@dragonledger/content-types').Subclass} />
+          <CardThemeProvider theme={cardTheme}>
+            <SubclassCard subclass={entry as unknown as import('@dragonledger/content-types').Subclass} />
+          </CardThemeProvider>
         </>
       )}
 

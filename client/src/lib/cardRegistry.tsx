@@ -11,6 +11,8 @@ import type { ContentType } from '@/lib/contentTypes'
 
 export interface TypeCardProps {
   entry: Record<string, unknown>
+  /** Only consumed by races/classes (List vs. Expanded render mode); every other type ignores it. */
+  mode?: 'list' | 'expanded'
 }
 
 // Registry mirroring lib/filterBarRegistry.ts's pattern. Every card
@@ -24,7 +26,7 @@ export const CARD_COMPONENTS: Partial<Record<ContentType, (props: TypeCardProps)
   feats: ({ entry }) => <FeatCard feat={entry as unknown as Feat} />,
   backgrounds: ({ entry }) => <BackgroundCard background={entry as unknown as Background} />,
   items: ({ entry }) => <ItemCard item={entry as unknown as Item} />,
-  races: ({ entry }) => <RaceCard race={entry as unknown as Race} id={entry.id as string} />,
-  classes: ({ entry }) => <ClassCard cls={entry as unknown as Class} id={entry.id as string} />,
+  races: ({ entry, mode }) => <RaceCard race={entry as unknown as Race} id={entry.id as string} mode={mode} />,
+  classes: ({ entry, mode }) => <ClassCard cls={entry as unknown as Class} id={entry.id as string} mode={mode} />,
   monsters: ({ entry }) => <MonsterCard monster={entry as unknown as Monster} />,
 }

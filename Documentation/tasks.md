@@ -582,33 +582,50 @@ real theming/print layout on top of all of them at once, rather than
 styling each type twice. See the final-export doc for full detail — task
 list per its §6:
 
-1. [ ] Build the shared component layer (`src/components/cards/shared/`):
+1. [x] Build the shared component layer (`src/components/cards/shared/`):
        `Shell` (`.page`/`.document` targets, `PAGE_INNER_MAX` constant),
        `ThemeProvider` (Parchment/Scribe's Copy/Grimoire presets + the 5-slot
        custom theme builder, app-wide scope), `Divider` (major/minor +
        `suppressEdgeDividers()`), `Subcard` (corner-tab, shared across
        Race/Class/Monster-packet uses), `useFitToPage` hook (`monster` and
-       `document` modes, shared `0.55` floor constant exported once)
-2. [ ] Port the 5 shared utilities as pure functions with unit tests
+       `document` modes, shared `0.55` floor constant exported once). Done
+       2026-08-09 — see `DevTools/Claude/phase-8.md`. Custom theme builder
+       is data-model only (`ThemeProvider` accepts custom tokens); the
+       actual settings UI is out of scope per item 5 below.
+2. [x] Port the 5 shared utilities as pure functions with unit tests
        against the real example rows named in the doc: `grantShapeToText`,
        `parseFeatDescription`, `parseDescriptionBlocks`/`splitSentences`/
-       segment-pagination trio, `groupFeatures`, `spellFooterFromExtraData`
-3. [ ] Build the orphaned-parent fallback (Subclass/Subrace) as one shared
-       presentational pattern, not two separate implementations
-4. [ ] Build each per-type card component (§3 of the final-export doc)
-       composing the shared pieces — Spell/Item trading cards, Condition/
-       Feat/Background simple cards, Race/Class List+Expanded modes,
-       Monster (own width/scale logic, per-section independent multi-
-       column), Monster+Spellcasting packet
+       segment-pagination trio, `groupFeatures`, `spellFooterFromExtraData`.
+       Done 2026-08-09, 23/23 tests passing — see `DevTools/Claude/phase-8.md`.
+3. [x] Build the orphaned-parent fallback (Subclass/Subrace) as one shared
+       presentational pattern, not two separate implementations. Done
+       2026-08-09/10 (`OrphanedParentFallback.tsx`) — wired into
+       `SubclassCard`/`SubraceCard` as part of item 4 below.
+4. [x] Build each per-type card component (§3 of the final-export doc)
+       composing the shared pieces. Done 2026-08-10 for: Condition/Feat/
+       Background/Item/Spell (List/`.page` mode), Race/Class (List +
+       Expanded `.document` mode with Subcard-nested Subrace/Subclass),
+       Monster (own width/scale logic via `useFitToPage`, per-section
+       independent multi-column), Subclass/Subrace (orphaned-parent
+       fallback wired in) — see `DevTools/Claude/phase-8.md`. **Still not
+       built:** Spell/Item's 2.5x3.5in trading-card render (greedy
+       pagination sheet view) and the Monster+Spellcasting packet — both
+       are separate UI surfaces beyond a DetailScreen card swap (a
+       multi-card print sheet, and an unresolved upstream spell-matching
+       dependency per §4 item 4 of the handoff doc), not started this pass.
 5. [ ] Explicitly out of scope this phase: `ContentClassOption` card (open
        question upstream), the source-priority settings UI, the app-wide
        custom theme builder's settings surface, and the monster-spell-
        matching read API — flag as separate follow-up work, don't build
        speculatively
-6. [ ] Visual pass against all 3 theme presets per type once built,
-       specifically re-checking Subcard tab vertical clearance and the
-       Grimoire dark-theme print fallback — both were real bugs during the
-       original demo phase
+6. [x] Visual pass against all 3 theme presets, done 2026-08-10 for the
+       types built in item 4 (verified live in the browser against real
+       `dev.db` data — Fireball, Adult Black Dragon, Sorcerer List+Expanded,
+       Elf Race Expanded, Alert feat — across Parchment/Scribe's Copy/
+       Grimoire). Subcard tab vertical clearance and the Grimoire print
+       fallback both confirmed visually correct. **Not yet covered:** the
+       trading-card and Monster+Spellcasting-packet visual pass, since
+       those aren't built (see item 4).
 
 ---
 

@@ -1,6 +1,7 @@
 import { Link } from 'react-router'
 import type { Subrace } from '@dragonledger/content-types'
 import { SourceBadge } from '@/components/browse/SourceBadge'
+import { Divider, OrphanedParentMeta, Shell, cardStyles } from '@/components/cards/shared'
 
 interface SubraceExtraData {
   unresolvedRaceName?: string
@@ -10,28 +11,26 @@ interface SubraceCardProps {
   subrace: Subrace
 }
 
-// Orphaned-parent fallback (raceId null): standalone card, no parent-context
-// link, shows the unresolved name as plain italic text instead of a link —
-// same convention Subclass uses for an unresolved classId.
+// Orphaned-parent fallback (raceId null) uses the one shared pattern
+// (OrphanedParentMeta, §2) — same convention Subclass uses for an
+// unresolved classId.
 export function SubraceCard({ subrace }: SubraceCardProps) {
   const extra = (subrace.extraData ?? {}) as SubraceExtraData
 
   return (
-    <div className="space-y-4 rounded-md border p-6 print:border-none">
+    <Shell mode="page" frameClassName="space-y-3">
       <div>
-        <h2 className="text-2xl font-semibold">{subrace.name}</h2>
+        <h2 className={cardStyles.cardHeading}>{subrace.name}</h2>
         {subrace.raceId ? (
-          <p className="text-sm text-muted-foreground">
+          <p className={'text-sm ' + cardStyles.detailLabel}>
             Subrace of{' '}
             <Link to={`/browse/races/${subrace.raceId}`} className="text-primary hover:underline">
               parent race
             </Link>
           </p>
         ) : (
-          <p className="text-sm italic text-muted-foreground">
-            {extra.unresolvedRaceName
-              ? `${extra.unresolvedRaceName} (unresolved — not linked to a race record)`
-              : 'No parent race linked'}
+          <p className="text-sm">
+            <OrphanedParentMeta parentKind="race" unresolvedName={extra.unresolvedRaceName} />
           </p>
         )}
         <div className="mt-2">
@@ -39,17 +38,19 @@ export function SubraceCard({ subrace }: SubraceCardProps) {
         </div>
       </div>
 
+      <Divider variant="major" />
+
       {(subrace.size || subrace.speed) && (
-        <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-sm">
+        <dl className={cardStyles.detailGrid}>
           {subrace.size && (
-            <div className="contents">
-              <dt className="text-muted-foreground">Size (override)</dt>
+            <div className={cardStyles.detailRow}>
+              <dt className={cardStyles.detailLabel}>Size (override)</dt>
               <dd>{subrace.size.join(', ')}</dd>
             </div>
           )}
           {subrace.speed && (
-            <div className="contents">
-              <dt className="text-muted-foreground">Speed (override)</dt>
+            <div className={cardStyles.detailRow}>
+              <dt className={cardStyles.detailLabel}>Speed (override)</dt>
               <dd>
                 {[
                   `Walk ${subrace.speed.walk}`,
@@ -65,26 +66,32 @@ export function SubraceCard({ subrace }: SubraceCardProps) {
       )}
 
       {subrace.traits.length > 0 && (
-        <div className="space-y-2 text-sm">
-          <p className="font-medium">Traits</p>
-          {subrace.traits.map((t, i) => (
-            <div key={i}>
-              <p className="font-medium">
-                {t.name} <span className="font-normal text-muted-foreground">(level {t.level})</span>
-              </p>
-              <p className="leading-relaxed">{t.description}</p>
-            </div>
-          ))}
-        </div>
+        <>
+          <Divider variant="minor" />
+          <div className="space-y-2 text-sm">
+            <p className={cardStyles.sectionLabel}>Traits</p>
+            {subrace.traits.map((t, i) => (
+              <div key={i}>
+                <p className={cardStyles.entryName}>
+                  {t.name} <span className="font-normal dl-muted">(level {t.level})</span>
+                </p>
+                <p className="leading-relaxed">{t.description}</p>
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       {subrace.description && (
-        <div className="space-y-2 text-sm leading-relaxed">
-          {subrace.description.split('\n').map((paragraph, i) => (
-            <p key={i}>{paragraph}</p>
-          ))}
-        </div>
+        <>
+          <Divider variant="minor" />
+          <div className={cardStyles.proseSection}>
+            {subrace.description.split('\n').map((paragraph, i) => (
+              <p key={i}>{paragraph}</p>
+            ))}
+          </div>
+        </>
       )}
-    </div>
+    </Shell>
   )
 }
