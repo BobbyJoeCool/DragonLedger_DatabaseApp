@@ -1,11 +1,28 @@
+# Phase 2.6 — Schema Expansion (extraData → columns unification): Design Notes
+
+> Part of the `Documentation/v1.0.0/` phase-document set — see
+> `v1.0.0-Roadmap.md` for the build-plan checklist and task log this design
+> rationale supports. Consolidated from `schema-expansion-design-review.md`,
+> `schema-expansion-design-handoff.md`, and `schema-expansion-session-log.md`.
+> The three raw per-key frequency-count audits this session worked from
+> (`extradata-key-frequency-audit.md`, `-compendium.md`, `-combined.md`,
+> relocated alongside this document in `Documentation/v1.0.0/` but not
+> merged into it) are not inlined here — their own header explicitly states
+> "everything load-bearing is repeated" in the design-review document below
+> (its §4 conflicts list and §5 full catalog), which *is* included in full.
+> Implementation log, including the two deviations verified against live
+> data: `DevTools/Notes/v0.2.notes.md`.
+
+---
+
 # Schema Expansion Design Review
 
 > **Status: resolved.** The open questions below were worked through in an
 > offline design session on August 5, 2026. Decisions, updated Prisma models,
-> and an implementation checklist live in `schema-expansion-design-handoff.md`
-> (session narrative in `schema-expansion-session-log.md`); the tracked task
-> list is `tasks.md`'s Phase 2.6. This document is kept as-is as the context
-> record that session worked from — read the handoff for what to actually build.
+> and an implementation checklist live in the handoff document further down
+> this file (session narrative also included below). This document is kept
+> as-is as the context record that session worked from — read the handoff
+> for what to actually build.
 
 **Purpose of this document:** a self-contained reference for an offline
 design discussion (with another AI or a person, outside this repo) about
@@ -18,13 +35,6 @@ import pipelines (what's a straight passthrough vs. a parsed/computed
 value), and the complete catalog of everything either source currently
 puts in `extraData`, with real examples. It does not propose a specific new
 schema — that's the decision this document exists to support.
-
-Companion documents (same repo, more granular per-source detail, not
-required reading to use this one — everything load-bearing is repeated
-here): `extradata-key-frequency-audit.md` (Open5e only),
-`extradata-key-frequency-audit-compendium.md` (Compendium only),
-`extradata-key-frequency-audit-combined.md` (side-by-side + shape-conflict
-detail this document summarizes in §4).
 
 ---
 
@@ -109,7 +119,7 @@ Both pipelines ultimately produce the same Prisma `CreateManyInput` shapes
 
 ---
 
-## 2. Full current Prisma schema
+## 2. Full Prisma schema at the time of this review (pre-expansion)
 
 ```prisma
 generator client {
@@ -422,7 +432,7 @@ markdown-table parsing — inherently best-effort).
 ### ContentSpell
 
 | Column                           | Open5e method                                       | Compendium method                                                                                                         |
-| -------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| --------------------------------- | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `name`                           | passthrough (`raw.name`)                            | parsed (name-tag-stripped `tags.name`)                                                                                    |
 | `level`                          | passthrough                                         | passthrough (`Number(raw.level)`)                                                                                         |
 | `school`                         | passthrough (`raw.school.key`)                      | inferred (single-letter code → full name via `SCHOOL_CODES` map; falls back to lowercased raw value if code unrecognized) |
@@ -446,7 +456,7 @@ its spell endpoint.
 ### ContentMonster
 
 | Column                                                                   | Open5e method                                                                                           | Compendium method                                                                                                                                              |
-| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `name`                                                                   | passthrough                                                                                             | parsed (name-tag-stripped)                                                                                                                                     |
 | `size`/`monsterType`/`alignment`                                         | passthrough (keyed lookup objects)                                                                      | passthrough (plain strings)                                                                                                                                    |
 | `armorClass`                                                             | passthrough (`raw.armor_class`)                                                                         | parsed (`Number(raw.ac)`, `raw.ac` is `number \| string` in the raw XML)                                                                                       |
@@ -465,7 +475,7 @@ its spell endpoint.
 ### ContentItem
 
 | Column               | Open5e method                                                                                                           | Compendium method                                                                                                                                                               |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `name`               | passthrough                                                                                                             | parsed (name-tag-stripped)                                                                                                                                                      |
 | `itemType`           | inferred (armor category, or `raw.category.key` fallback)                                                               | inferred (single-letter type code → display string via `TYPE_TO_ITEM_TYPE` map; falls back to lowercased code)                                                                  |
 | `rarity`             | passthrough (magic items only, `raw.rarity.key`)                                                                        | parsed (extracted from a combined `<detail>` string like `"rare (requires attunement by a warforged)"` via `parseDetail()`)                                                     |
@@ -480,9 +490,9 @@ its spell endpoint.
 ### ContentClass / ContentSubclass
 
 | Column                     | Open5e method                                                                                                                                                                                | Compendium method                                                                                                                                             |
-| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- | ------------------------------------------------ |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `name`                     | passthrough                                                                                                                                                                                  | parsed (name-tag-stripped)                                                                                                                                    |
-| `hitDie`                   | inferred, 5-level fallback chain: nested `hit_points.hit_dice` → a parsed `CORE_TRAITS_TABLE` markdown row → top-level `hit_dice` string → a feature-text scan → a hardcoded per-class table | inferred (`Number(raw.hd)                                                                                                                                     |     | 8`, direct XML attribute with a static fallback) |
+| `hitDie`                   | inferred, 5-level fallback chain: nested `hit_points.hit_dice` → a parsed `CORE_TRAITS_TABLE` markdown row → top-level `hit_dice` string → a feature-text scan → a hardcoded per-class table | inferred (`Number(raw.hd) \| 8`, direct XML attribute with a static fallback) |
 | `primaryAbility`           | parsed (a `CORE_TRAITS_TABLE` markdown-pipe-table row, "and"/"or" logic detected via regex) with a `primary_abilities[]` API-field fallback                                                  | inferred (hardcoded `PRIMARY_ABILITY_BY_CLASS` table — no Compendium XML field states this concept at all, `<spellAbility>` is a different, narrower concept) |
 | `savingThrows`             | parsed (same `CORE_TRAITS_TABLE` row)                                                                                                                                                        | parsed (`<proficiency>` text split into ability-name tokens vs. skill-name tokens by matching against a known ability-name set)                               |
 | `armorProfs`/`weaponProfs` | parsed (`CORE_TRAITS_TABLE` rows, `"none"` → empty array)                                                                                                                                    | passthrough-ish (`<armor>`/`<weapons>` raw text kept as a single-element array unless `"none"`)                                                               |
@@ -499,7 +509,7 @@ after insert**, cross-source-first (see §1).
 ### ContentRace / ContentSubrace
 
 | Column                     | Open5e method                                                                                                                                                                                                                                                                                                                                    | Compendium method                                                                                                                                                                                                                                                                                               |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `name`                     | passthrough                                                                                                                                                                                                                                                                                                                                      | parsed (comma-split for parent/subrace name, then name-tag-stripped)                                                                                                                                                                                                                                            |
 | `size`                     | parsed (a `"Size"`-named trait's prose text scanned for known size words, default `["medium"]`)                                                                                                                                                                                                                                                  | inferred (single-letter code → array via a lookup map, default `["medium"]`)                                                                                                                                                                                                                                    |
 | `speed`                    | parsed (a `"Speed"`-named trait's prose scanned for a `"N feet"` pattern)                                                                                                                                                                                                                                                                        | parsed (`<speed>` + `<speedOther>` text, the latter regex-scanned for `fly`/`swim`/`climb` sub-speeds)                                                                                                                                                                                                          |
@@ -511,7 +521,7 @@ after insert**, cross-source-first (see §1).
 ### ContentBackground
 
 | Column           | Open5e method                                                                                                                                            | Compendium method                                                                                                                               |
-| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `name`           | passthrough                                                                                                                                              | parsed (name-tag-stripped)                                                                                                                      |
 | `proficiencies`  | parsed (per-`benefit.type` switch over `skill_proficiency`/`tool_proficiency` benefit prose → `parseProficiencyGrant()`, tagged `category: skill\|tool`) | parsed (`<proficiency>` element + a `"Tool Proficiency:"`-labeled `<trait>`, same `parseProficiencyGrant()` helper reused from Open5e's module) |
 | `abilityBonuses` | inferred (hardcoded "distribute 3 points across named abilities, max +2" rule — the actual 2024 SRD rule, not per-record data)                           | inferred (same hardcoded rule, triggered by an `"Ability Scores:"`-labeled `<trait>` instead of a typed benefit)                                |
@@ -540,9 +550,6 @@ option back to the class that grants it.
 
 ## 4. Real cross-source shape conflicts (the hard part)
 
-Full detail and more examples live in `extradata-key-frequency-audit-combined.md`
-§ per-table; summarized here for self-containedness.
-
 1. **`ContentMonster.damageResistances`/`damageImmunities`/`damageVulnerabilities`/`conditionImmunities`** — a real dedicated column, not extraData, and the two sources write incompatible array-element shapes to it _today_, in production:
 
    ```json
@@ -550,7 +557,7 @@ Full detail and more examples live in `extradata-key-frequency-audit-combined.md
    // Compendium:  [{"type":"radiant"}]  or  [{"types":["acid","cold","fire"],"nonmagical":true,"bypassedBy":"silvered weapons"}]
    ```
 
-   Open5e's shape is flatter but lossy (no qualifier support at all — "resistant to bludgeoning/piercing/slashing from nonmagical attacks" can't be represented, only the bare type list). Compendium's is richer but never gets simplified back down even for the common single-type case... actually it does (`{type: "x"}` for the simple case, `{types: [...], nonmagical, bypassedBy}` only for compound cases) — see `shared/resistance.ts`. This is the single highest-priority shape decision, because it's already live on a real column both sources write to, not a hypothetical extraData promotion.
+   Open5e's shape is flatter but lossy (no qualifier support at all — "resistant to bludgeoning/piercing/slashing from nonmagical attacks" can't be represented, only the bare type list). Compendium's is richer but never gets simplified back down even for the common single-type case (`{type: "x"}` for the simple case, `{types: [...], nonmagical, bypassedBy}` only for compound cases — see `shared/resistance.ts`). This is the single highest-priority shape decision, because it's already live on a real column both sources write to, not a hypothetical extraData promotion.
 
 2. **`ContentSpell` upcast/scaling data**: Open5e's `extraData.castingOptions` (`{type: "slot_level_N", damage_roll, target_count, duration, range, concentration, shape_size, desc}`, all nullable except `type`) vs. Compendium's `extraData.scalingDice` (`{dice, description, level}`, no room for range/duration/shape changes) are the same real-world fact with zero shared field names. A unified shape needs new design, not a pick-one-side decision.
 
@@ -570,17 +577,11 @@ Full detail and more examples live in `extradata-key-frequency-audit-combined.md
 
 ## 5. Full extraData catalog, both sources, with examples
 
-This section is the complete inventory — every key seen in `extraData`
-across every table and both sources, regardless of frequency (unlike the
-audit reports, no >5-row threshold is applied here, since a column
-decision needs to know about real-but-rare fields too).
-
 ### ContentSpell
 
 **Open5e**: `targetType`, `targetCount`, `shapeSizeUnit` (near/fully
-constant, low signal — see audit), `savingThrow` (real 6-value ability
-enum: wisdom/dexterity/constitution/charisma/strength/intelligence),
-`castingOptions` (array, see §4 example above), `damageRoll` (dice string,
+constant, low signal), `savingThrow` (real 6-value ability
+enum), `castingOptions` (array, see §4 example above), `damageRoll` (dice string,
 e.g. `"4d4"`), `damageTypes` (array, e.g. `["acid"]`), `materialConsumed`
 (implicit boolean), `shapeType` (`sphere`/`cube`/`cone`/`line`),
 `shapeSize` (integer), `attackRoll` (implicit boolean),
@@ -602,10 +603,8 @@ Resistance` traits pre-extracted out), `proficiencyBonus` (int, **0 on
 54.5%** — see §4 item 5), `legendaryResistances` (int), `edition`,
 `homebrew`, `thirdParty`, `unearthedArcana`, `otherTags`, `page`,
 `additionalCitations`, `lairActions` (array `{name, description}`),
-`spellcasting` (object, same nominal shape, lower reliability — see §4
-Monster spellcasting example), `telepathyRange` (int, e.g. 60/120/30),
-`environment` (free text, e.g. `"mountain, planar (elemental plane of
-fire)"`), `ancestry` (text grouping key, e.g. `"Hag"`, `"Bulette"`).
+`spellcasting` (object, same nominal shape, lower reliability), `telepathyRange` (int, e.g. 60/120/30),
+`environment` (free text), `ancestry` (text grouping key, e.g. `"Hag"`, `"Bulette"`).
 
 ### ContentItem
 
@@ -638,16 +637,14 @@ through `traits[]` instead (a deliberate Phase 2 design choice, not a gap).
 
 **Compendium**: `edition`, `homebrew`, `thirdParty`, `unearthedArcana`,
 `otherTags`, `page`, `creatureType` (text — real variety beyond
-"Humanoid": Fiend/Elemental/Dragon/Undead/full-sentence qualifiers, see
-combined report), `rawAbility`/`rawResist`/`rawVulnerable`/
+"Humanoid": Fiend/Elemental/Dragon/Undead/full-sentence qualifiers),
+`rawAbility`/`rawResist`/`rawVulnerable`/
 `rawConditionResist`/`rawConditionImmune`/`rawProficiency`/`rawWeapons`/
 `rawTools`/`rawLanguages` (raw backup text for each field that's also
-synthesized into `traits[]`, per the resolved `v1-roadmap-open-decisions.md
-§2.5.1` design question), plus (Subrace only)
+synthesized into `traits[]`, per the resolved design question), plus (Subrace only)
 `descriptionStrippingSkipped` (boolean, **`true` on literally every one of
 142 rows** — the dedup-stripping mechanism has never once actually
-stripped anything in live data, worth investigating independent of any
-column decision) and `unresolvedRaceName` (when parent resolution fails —
+stripped anything in live data) and `unresolvedRaceName` (when parent resolution fails —
 **60/142 rows, 42%**, mostly because the named parent, e.g. Half-Elf,
 Half-Orc, Genasi, Merfolk, isn't a real SRD-2024 race at all, so there's
 nothing to resolve to).
@@ -658,14 +655,13 @@ nothing to resolve to).
 `languages` (free text), `adventures_and_advancement`/
 `connection_and_memento` (free text, 2014-style benefit passthrough),
 `unrecognizedBenefits` (array, catch-all for any benefit type the switch
-doesn't handle — empty in the current 4-row sample, but the mechanism
-exists).
+doesn't handle).
 
 **Compendium**: `page`, `grantedFeat` (`{name}`, same shape as Open5e's),
 `equipment` (free text, same intent), `unrecognizedTraits` (array
 `{name, description}` — real, common, 150/223 rows, carrying genuinely
 valuable content like `"Suggested Characteristics"` roleplay prompts, not
-just malformed data — see combined report), `edition`, `thirdParty`,
+just malformed data), `edition`, `thirdParty`,
 `otherTags`, `homebrew`.
 
 ### ContentFeat (Compendium only — Open5e has no Feat data at all)
@@ -680,7 +676,7 @@ category info, e.g. `"Fighting Style: Archery"`), `modifiers` (array
 ### ContentClassOption (Compendium only)
 
 `page`, `edition` — that's the entire real key set; this table is the
-simplest by far (see combined report), consistent with being newly
+simplest by far, consistent with being newly
 synthesized from spell-schema-shaped records rather than a native rich
 Compendium record type.
 
@@ -694,9 +690,6 @@ the intended keys, never yet exercised with real rows.
 ---
 
 ## 6. Open questions this document exists to support
-
-Not proposals — just the concrete decisions that need making, in the
-order §4's items are ranked:
 
 1. Pick (or design) one shape for monster damage resistance/immunity/
    vulnerability/condition-immunity arrays that can represent both the
@@ -723,3 +716,504 @@ order §4's items are ranked:
    being `true` on 100% of rows suggests the safeguarded stripping
    mechanism itself may need a look, regardless of what happens to the
    surrounding schema.
+
+---
+
+# DragonLedger DatabaseApp — Schema Expansion Design Handoff
+
+> **Purpose of this document:** self-contained handoff from a design session that
+> worked through the open questions in the review document above. It contains
+> the decisions made, the updated Prisma models, and a checklist for Claude
+> Code to implement directly. See the session log below for how each
+> decision was reached.
+
+**Session date:** August 5, 2026
+
+## 1. Decisions made
+
+### 1.1 Monster resistances/immunities/vulnerabilities/condition immunities
+
+**Decision:** unified shape for all four dedicated columns:
+
+```json
+[{ "types": ["fire"], "nonmagical": false, "bypassedBy": null }]
+```
+
+Both sources write to this shape. Open5e maps its flat `["acid"]` array in
+losslessly (`types: ["acid"], nonmagical: false, bypassedBy: null`). Compendium's
+existing composite output already matches this shape via `shared/resistance.ts`.
+
+**Reasoning:** this is a real, already-shipped column both importers write to
+today with genuinely incompatible shapes, not a hypothetical extraData
+promotion. The character sheet app needs to know whether a resistance is
+conditional (nonmagical attacks, unless silvered) to correctly decide whether
+to halve incoming damage, so the qualifier can't be dropped even though display
+is plain text. Plain text gets derived from this structure at render time; it
+doesn't replace it.
+
+**Fix included:** Open5e's transform currently reads only the flat
+`damage_resistances`/etc. arrays and discards the paired `damage_resistances_display`/etc.
+string fields the API also returns. Those display strings are standard 5e
+stat-block prose and should be run through the same composite parser Compendium
+uses, rather than writing separate parsing logic per source.
+
+**Caveat:** the sample record used to confirm this (Aboleth) has all `_display`
+fields empty, since it has no resistances. Pull a real monster with a known
+qualified resistance (CR 8+) and check the actual populated string shape before
+finalizing the parser.
+
+`bypassedBy` stays free text (not an enum) for now. Real Compendium data on it
+is too sparse to build a taxonomy from yet.
+
+### 1.2 Spell scaling (upcast damage / cantrip growth)
+
+**Decision:** unified shape, replacing both `extraData.castingOptions` (Open5e)
+and `extraData.scalingDice` (Compendium) with one key, `extraData.scaling`:
+
+```json
+{ "trigger": "slot_level" | "character_level", "triggerValue": number | null, "dice": string, "description": string | null }
+```
+
+**Reasoning:** the character sheet app needs to calculate scaling damage, same
+requirement as the resistance case, so the shape has to be queryable, not just
+displayable. The `trigger` type is decided from `ContentSpell.level` (an
+existing dedicated column) rather than guessed: `level === 0` means character-level
+scaling (cantrips), anything else means slot-level scaling (upcasting). This
+resolves a real ambiguity found during design: Compendium's `<roll level="N">`
+element means different things depending on what kind of spell it's attached to,
+and the existing spell-level column already disambiguates it cleanly.
+
+Open5e's `castingOptions` schema anticipates non-damage upcast changes
+(duration/range/concentration/shape_size varying per slot), but every sampled
+record has these as null. They're intentionally dropped from the unified shape
+rather than carried forward unused. If real data ever populates them, that's a
+small additive migration later.
+
+`ContentSpell.higherLevels` (free-text "At Higher Levels" prose) stays as its
+own column alongside `extraData.scaling` — structured data for calculation,
+prose for flavor/edge cases.
+
+**Open item, not resolved here:** Compendium's "Aura of Vitality" case has
+`level: null` (a scaling effect not tied to any specific level or slot). Not
+enough examples to know if this is common. Worth a manual check once real
+queries are running against the new shape, rather than forcing a rule from one
+example.
+
+### 1.3 Class/Subclass features
+
+**Decision:** new relation table, not a JSON blob.
+
+```prisma
+model ContentClassFeature {
+  id          String           @id @default(cuid())
+  classId     String?
+  class       ContentClass?    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subclassId  String?
+  subclass    ContentSubclass? @relation(fields: [subclassId], references: [id], onDelete: Cascade)
+  level       Int
+  name        String
+  description String
+  type        String?
+
+  @@index([classId, level])
+  @@index([subclassId, level])
+}
+```
+
+A row belongs to exactly one of `classId`/`subclassId`; the other stays null.
+`type` carries Open5e's feature-type tag when known, stays null on Compendium
+rows (its XML has no equivalent). Open5e's grouped `{levels: [4,8,12,16]}`
+entries explode into one row per level to match Compendium's native
+granularity.
+
+**Reasoning:** the character sheet app needs to query features by level ("what
+does a level 7 Barbarian have"), and once the data is one-row-per-level anyway,
+that's relational data, not blob data. A real table with an indexed `level`
+column gives a normal `WHERE classId = X AND level <= 7` instead of a
+`json_each` scan on every read, which matters given this gets called on every
+level-up and every character sheet render.
+
+**Named tradeoff:** exploding means a recurring feature (e.g. Ability Score
+Improvement at levels 4/8/12/16) shows up as multiple same-named rows if
+listing "all of a class's features" in one view rather than "features at level
+N." Correct for the query pattern described, worth knowing about ahead of time.
+
+### 1.4 Bug fixes (no schema change)
+
+**`ContentItem.extraData.isMartial` (Compendium, constant `false`):**
+`Compendium_Structure.md`'s own code tables show a likely root cause: `<item><type>`
+uses `M` for "Melee Weapon" while `<item><property>` uses `M` for "Martial" —
+same letter, different fields, different meanings. The fix is to split
+`<property>` on commas and check for an exact `M` token, then set `isMartial`
+from that and `isSimple` as its inverse. Verify against known martial weapons
+(Longsword, Greatsword) before trusting. **(Investigated during implementation
+and found to be a false premise — see the implementation log below.)**
+
+**`ContentMonster.extraData.proficiencyBonus` (Compendium, defaults to `0` on
+54.5% of rows):** add the same `inferProficiencyBonus(cr)` fallback Open5e's
+transform already has, for records with no "Proficiency Bonus" trait.
+
+### 1.5 One-sided key decisions
+
+**`ContentMonster.experiencePoints`:** promoted to a real `Int` column (moved
+out of `extraData`), computed from `challengeRating` via the standard 5e
+CR-to-XP table for both sources, rather than left as a raw passthrough Open5e
+has and Compendium structurally can't (its XML has no XP field at all).
+
+**Compendium spell prose-parsing (new):** `savingThrow`, `damageRoll`,
+`damageTypes`, `materialConsumed`, `attackRoll` currently exist only for
+Open5e (parsed from its structured API response). New extraction is worth
+writing against Compendium's spell description prose ("make a Dexterity saving
+throw," "the spell consumes the material component"), since the character
+sheet app needs these queryable regardless of source. Same best-effort caveat
+as every other prose-parsed field in this pipeline — validate against a real
+sample before trusting broadly.
+
+**`ContentClass.extraData.casterType` (Compendium, currently absent):**
+inferred rather than left Open5e-only:
+
+- `spellcastingAbility` is null → `NONE`
+- `slotsReset === "S"` (short rest recovery, the defining trait of Pact
+  Magic) → `PACT`
+- `slotsReset === "L"` alone cannot distinguish `FULL` from `HALF` (both full
+  and half casters reset on long rest), so this needs a new hardcoded
+  per-class lookup table for that split — the same pattern the Open5e
+  transform already uses for `SPELLCASTING_ABILITY_BY_CLASS`. This is a
+  correction to the original framing of "infer from slotsReset +
+  spellcastingAbility alone," which can only reliably resolve NONE and PACT.
+
+**`ContentRace`/`ContentSubrace` `creatureType` and related fields (new
+Open5e-side parsing):** Open5e's `extraData` is currently `null` on every race
+row by original design — everything routes through `traits[]` prose. **Not
+implemented — a false premise, see the implementation log below**: verified
+against all 9 real SRD-2024 species that none has a trait resembling
+"Creature Type"/"Ability Score"/"Proficiency"/"Languages"/"Weapon"/"Tool" at
+all — 2024 species restructured these concepts entirely, so writing a parser
+against fields that don't exist in the only real dataset available would have
+been dead code.
+
+**Left as-is, no action:**
+
+- `ContentMonster.category`/`subcategory` and `ContentSpell.targetType`/`targetCount`/shape
+  cluster: already flagged as low-signal/near-constant in the original audits,
+  not worth building missing-side extraction for weak data.
+- The citation/tag cluster (`page`, `edition`, `homebrew`, `thirdParty`,
+  `unearthedArcana`, `otherTags`): not a real gap. Open5e's `sourceId` already
+  encodes "which document" — just via a different mechanism (one Source row per
+  API document vs. one per cited book).
+
+### 1.6 Known issue, deferred
+
+`ContentSubrace.extraData.descriptionStrippingSkipped` is `true` on all 142
+real Compendium subraces — the safeguarded paragraph-dedup mechanism has never
+once actually stripped anything in practice. Flagged as a known issue for
+separate investigation (either the heuristic is too conservative or the
+parent/subrace paragraph-matching assumption doesn't hold in real data).
+Explicitly not part of this schema migration. **Still open as of v1.0.0.**
+
+## 2. Updated Prisma models
+
+Only models with schema-level changes are shown in full below. Unchanged at
+the schema level: `Source`, `ImportJob`, `ContentItem`, `ContentRace`,
+`ContentSubrace`, `ContentBackground`, `ContentCondition`, `ContentFeat`,
+`ContentClassOption`, `Language`.
+
+```prisma
+model ContentMonster {
+  id                    String  @id @default(cuid())
+  slug                  String
+  sourceId              String
+  source                Source  @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  name                  String
+  size                  String
+  monsterType           String
+  alignment             String
+  armorClass            Int
+  hitPoints             Int
+  hitDice               String
+  speed                 String  // JSON
+  abilityScores         String  // JSON
+  savingThrows          String?
+  skills                String?
+  damageResistances     String? // JSON array: [{ types: string[], nonmagical: boolean, bypassedBy: string | null }]
+  damageImmunities      String? // same shape as damageResistances
+  damageVulnerabilities String? // same shape as damageResistances
+  conditionImmunities   String? // same shape as damageResistances (types = condition names)
+  senses                String?
+  languages             String?
+  challengeRating       String
+  experiencePoints      Int     // computed from challengeRating at import time, both sources
+  actions               String  // JSON array, each tagged actionType: "action"|"bonus"|"reaction"
+  legendaryActions      String?
+  description           String?
+  extraData             String? // armorClassDetail, lairActions, traits[], spellcasting,
+  // proficiencyBonus, legendaryResistances, category/subcategory,
+  // ancestry, environment, telepathyRange (Compendium only)
+
+  @@unique([sourceId, slug])
+  @@index([challengeRating])
+  @@index([monsterType])
+}
+
+model ContentSpell {
+  id            String  @id @default(cuid())
+  slug          String
+  sourceId      String
+  source        Source  @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  name          String
+  level         Int
+  school        String
+  castingTime   String
+  range         String
+  components    String
+  material      String?
+  duration      String
+  concentration Boolean
+  ritual        Boolean
+  classes       String  // JSON array of class display names
+  description   String
+  higherLevels  String? // free-text "At Higher Levels" prose, kept alongside extraData.scaling
+  extraData     String? // scaling[] (both sources, shape below), damageRoll, damageTypes,
+  // savingThrow, attackRoll, materialConsumed (both sources after this pass),
+  // targetType/targetCount, shape info, reactionCondition, materialCost
+  // scaling entry shape: { trigger: "slot_level" | "character_level",
+  //   triggerValue: number | null, dice: string, description: string | null }
+
+  @@unique([sourceId, slug])
+  @@index([level])
+  @@index([school])
+}
+
+model ContentClass {
+  id                  String  @id @default(cuid())
+  slug                String
+  sourceId            String
+  source              Source  @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  name                String
+  hitDie              Int
+  primaryAbility      String  // JSON: { abilities: string[], logic: "AND"|"OR" }
+  savingThrows        String  // JSON array
+  armorProfs          String  // JSON array
+  weaponProfs         String  // JSON array
+  skillChoices        String  // JSON, Fixed/Choice Grant Shape
+  spellcastingAbility String?
+  description         String
+  extraData           String? // casterType (FULL/HALF/NONE/PACT, both sources after this pass),
+  // toolProfs/slotsReset (Compendium only)
+
+  subclasses   ContentSubclass[]
+  classOptions ContentClassOption[]
+  features     ContentClassFeature[]
+
+  @@unique([sourceId, slug])
+}
+
+model ContentSubclass {
+  id          String        @id @default(cuid())
+  slug        String
+  sourceId    String
+  source      Source        @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  classId     String? // nullable per Phase 4, was required with onDelete: NoAction originally
+  class       ContentClass? @relation(fields: [classId], references: [id], onDelete: SetNull)
+  name        String
+  description String
+  extraData   String? // unresolvedClassName if cross-source resolution (see Compendium docs) fails
+
+  features ContentClassFeature[]
+
+  @@unique([sourceId, slug])
+}
+
+model ContentClassFeature {
+  id          String           @id @default(cuid())
+  classId     String?
+  class       ContentClass?    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subclassId  String?
+  subclass    ContentSubclass? @relation(fields: [subclassId], references: [id], onDelete: Cascade)
+  level       Int
+  name        String
+  description String
+  type        String? // Open5e's feature-type tag when known (e.g. CLASS_LEVEL_FEATURE); null on Compendium rows
+
+  @@index([classId, level])
+  @@index([subclassId, level])
+}
+```
+
+**Relations & FK behavior for the new table:** `ContentClassFeature` has no
+direct `sourceId`; it cascades transitively. Deleting a `Source` cascades to
+`ContentClass`/`ContentSubclass` rows (existing behavior), which cascade to
+their `ContentClassFeature` rows via the `onDelete: Cascade` on both FKs above.
+A feature row must have exactly one of `classId`/`subclassId` set; this isn't
+enforceable at the Prisma schema level and should be validated in the transform
+layer before insert.
+
+## 3. Implementation Instructions for Claude Code (historical — already executed)
+
+1. Add the `ContentClassFeature` model to `schema.prisma`. Add
+   `features ContentClassFeature[]` to `ContentClass` and `ContentSubclass`.
+2. Add `experiencePoints Int` to `ContentMonster`; remove it from that model's
+   `extraData` comment.
+3. Run `prisma migrate dev --name schema-expansion-phase-1`.
+4. Update the Open5e monster transform to write `experiencePoints` to the new
+   column (existing passthrough value, just relocated).
+5. Update the Compendium monster transform to compute `experiencePoints` from
+   `challengeRating` via the standard 5e CR-to-XP table (Compendium's XML has
+   no XP field, so this is a new computed value, not a passthrough).
+6. Update the Open5e monster transform to read `damage_resistances_display`/`damage_immunities_display`/`damage_vulnerabilities_display`/`condition_immunities_display`
+   and parse them through the same composite parser Compendium uses in
+   `shared/resistance.ts`, replacing the current flat-array passthrough. Pull
+   one real monster with a known qualified resistance and check the actual
+   `_display` string format before finalizing the regex.
+7. Update the Compendium spell transform to output `extraData.scaling` in the
+   unified shape (rename from `scalingDice`), setting `trigger` from
+   `spell.level` (`0` → `character_level`, else `slot_level`).
+8. Update the Open5e spell transform to output `extraData.scaling` in the
+   unified shape (rename from `castingOptions`), dropping the unused
+   duration/range/concentration/shape_size fields.
+9. Write new Compendium spell prose-parsers for `savingThrow`, `damageRoll`,
+   `damageTypes`, `materialConsumed`, `attackRoll`. Validate output against a
+   representative sample of real spells before merging.
+10. Build `ContentClassFeature` population logic in both transforms: explode
+    Open5e's grouped `levels[]` features into one row per level; write
+    Compendium's already-one-row-per-level features directly. Remove
+    `features` from both models' `extraData` comments once migrated.
+11. Fix the Compendium item transform's `isMartial` derivation: check for an
+    exact `M` token in the comma-split `<property>` list (not `<type>`), set
+    `isSimple` as the inverse. Verify against known martial weapons (Longsword,
+    Greatsword) in a real import before trusting.
+12. Add the `inferProficiencyBonus(cr)` fallback (already written for Open5e)
+    to the Compendium monster transform's `proficiencyBonus` derivation.
+13. Add `casterType` inference to the Compendium class transform:
+    `spellcastingAbility === null` → `NONE`; `slotsReset === "S"` → `PACT`;
+    otherwise consult a new hardcoded per-class `FULL`/`HALF` lookup table.
+14. Write a new Open5e race trait parser to extract `creatureType` (and other
+    fields Compendium already captures) from `traits[]` prose into
+    `extraData`, matching Compendium's existing key names where the concept
+    lines up.
+15. File `ContentSubrace.extraData.descriptionStrippingSkipped` being `true`
+    on 100% of real subraces as a separate known-issue ticket. Not part of
+    this migration; do not attempt to fix inline.
+16. After implementation, re-run all three extraData frequency audits
+    against fresh imports to confirm the shapes actually converge and the two
+    bug fixes (`isMartial`, `proficiencyBonus`) produced real, sane
+    distributions rather than a different constant value.
+
+---
+
+# Session Log — Schema Expansion Design Conversation
+
+**Date:** August 5, 2026
+**Participants:** project owner, Claude (Sonnet 5)
+**Purpose:** work through the open questions in the design review above and
+decide how to unify the Open5e/Compendium extraData shapes.
+**Output:** the handoff document above
+
+## Session flow
+
+**1. Context gathering.** Reviewed the four uploaded documents (both audits,
+the combined audit, and the design review) plus the project's schema brief and
+API reference docs to understand the two import pipelines, the current
+`schema.prisma`, and every documented shape conflict between Open5e and
+Compendium.
+
+**2. Resistance/immunity/vulnerability shape.**
+
+- Asked how the read side should display resistances (badges vs. full
+  qualifiers vs. hybrid), and how to sequence the two known Compendium bugs.
+- Answer: display is plain text, but the real goal is the character sheet app
+  needing to programmatically determine whether a hit should be halved.
+- This reframed the decision from a display question to a data-contract
+  question. Proposed a unified `{types, nonmagical, bypassedBy}` shape;
+  confirmed.
+- Follow-up: asked whether Open5e's side of the qualifier data could be
+  recovered via regex. Found that Open5e's API already returns
+  `_display` string fields alongside the flat arrays, currently unused by the
+  transform, rather than requiring new extraction from nothing.
+- **Decision locked.**
+
+**3. Spell scaling shape.**
+
+- Asked three questions: whether Heroes needs to calculate scaling damage,
+  whether cantrip vs. slot-level scaling should be tagged explicitly, and
+  whether structured data should replace or supplement the existing
+  `higherLevels` prose column.
+- Answers: needs to be calculable; tag explicitly; keep both structured data
+  and prose.
+- While mapping the two source shapes, found a real ambiguity: Compendium's
+  `<roll level="N">` element means character level for cantrips but spell slot
+  level for leveled spells — same field, context-dependent meaning. Resolved
+  using the existing `ContentSpell.level` column to disambiguate rather than
+  guessing.
+- Proposed `{trigger, triggerValue, dice, description}`, flagged two edge
+  cases (unobserved non-damage upcast fields, a `level: null` outlier) as
+  explicit assumptions rather than silently deciding them.
+- **Decision locked.**
+
+**4. Class/Subclass features shape.**
+
+- Asked whether Heroes needs to query by level, whether this should become a
+  real relation table instead of JSON, and which granularity to normalize to.
+- Answers: needs to be queryable; wanted a recommendation on the table
+  question; chose to explode to one-row-per-level.
+- Recommended a real `ContentClassFeature` relation table given the query
+  pattern and the now-settled one-row-per-level granularity, with reasoning
+  (indexed queries vs. JSON scans on a hot path). Named the tradeoff
+  (duplicate-looking rows for recurring features) explicitly.
+- **Decision locked.**
+
+**5. Remaining smaller items.** Asked how to handle the rest (walk through
+each vs. bundle as implementation notes vs. defer). Chose to walk through
+each.
+
+- **isMartial bug (Compendium):** identified a likely root cause directly from
+  the project's own `Compendium_Structure.md` — an `M` code collision between
+  `<item><type>` (Melee) and `<item><property>` (Martial). Proposed as an
+  implementation fix, confirmed.
+- **proficiencyBonus bug (Compendium):** straightforward reuse of Open5e's
+  existing CR-inference helper. Confirmed.
+- **One-sided keys batch:** sorted into "no action needed" (low-signal fields
+  already flagged weak in the audits, and the citation/tag cluster which
+  isn't a real gap), one proposed free win (compute `experiencePoints` from
+  `challengeRating` instead of treating it as source-dependent), and three
+  real decisions (Compendium spell prose-parsing for
+  savingThrow/damageRoll/damageTypes/materialConsumed/attackRoll; casterType
+  inference for Compendium classes; and, raised separately afterward, Open5e
+  race trait parsing for creatureType). All confirmed yes.
+  - Correction made during casterType design: the originally-proposed
+    inference method (`slotsReset` + `spellcastingAbility` presence alone)
+    can only reliably resolve `NONE` and `PACT`. Flagged that `FULL`/`HALF`
+    needs an additional hardcoded per-class table, since both caster tiers
+    reset on long rest and nothing in the raw data distinguishes them.
+- **descriptionStrippingSkipped (100% true on all subraces):** confirmed as a
+  known issue, filed for separate investigation, explicitly kept out of this
+  migration's scope.
+
+**6. Handoff.** Produced the handoff document above and this log.
+
+## Decisions at a glance
+
+| # | Item | Outcome |
+| --- | --- | --- |
+| 1 | Monster damage resistance/immunity/vulnerability shape | Unified `{types, nonmagical, bypassedBy}`; Open5e switches to its unused `_display` fields |
+| 2 | Spell scaling shape | Unified `{trigger, triggerValue, dice, description}`; trigger decided from `spell.level` |
+| 3 | Class/Subclass features | New `ContentClassFeature` relation table, one row per level |
+| 4 | Compendium `isMartial` bug | Fix: check `<property>` list for exact `M`, not `<type>` — **found to be a false premise during implementation** |
+| 5 | Compendium `proficiencyBonus` bug | Fix: reuse existing `inferProficiencyBonus(cr)` fallback |
+| 6 | Monster `experiencePoints` | Promoted to real column, computed from CR for both sources |
+| 7 | Spell savingThrow/damageRoll/damageTypes/materialConsumed/attackRoll | New Compendium-side prose-parsing |
+| 8 | Class `casterType` | New Compendium-side inference (spellcastingAbility + slotsReset + new per-class table) |
+| 9 | Race/Subrace `creatureType` and related | New Open5e-side parsing — **found to be a false premise during implementation, not built** |
+| 10 | `descriptionStrippingSkipped` at 100% | Filed as known issue, deferred |
+| — | Monster category/subcategory, spell target/shape cluster, citation/tag cluster | No action, low signal or not a real gap |
+
+## Open items carried into the handoff doc, not resolved this session
+
+- Whether Compendium's `level: null` scaling entries (e.g. "Aura of Vitality")
+  represent a real pattern or a one-off — needs checking against more real
+  data.
+- Whether Open5e's `castingOptions` non-damage upcast fields
+  (duration/range/concentration/shape_size) ever actually populate anywhere
+  in the wild; currently assumed unused and dropped from the unified shape.
+- Root-cause investigation of `descriptionStrippingSkipped`, deferred to a
+  separate ticket by design.

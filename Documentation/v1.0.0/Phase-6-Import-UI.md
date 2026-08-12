@@ -1,3 +1,12 @@
+# Phase 6 — Import UI: Design Notes
+
+> Part of the `Documentation/v1.0.0/` phase-document set — see
+> `v1.0.0-Roadmap.md` for the build-plan checklist and task log this design
+> rationale supports. Consolidated from `Phase-6-Import-UI-Design-Decisions.md`.
+> Implementation log: `DevTools/Notes/v0.6.notes.md`.
+
+---
+
 # DragonLedger DatabaseApp — Phase 6 Import UI: Design Decisions
 
 > Produced from the Phase 6 Import UI Design Brief. Paste this directly into
@@ -17,9 +26,9 @@ instance. There's no scenario where DatabaseApp needs to be reachable from a
 different machine than the one running its desktop client. That makes the
 local Electron + SQLite framing in this Phase 6 brief the accurate one —
 Phase 1.1's "hosted web app" language looks like an earlier or aspirational
-plan that got superseded. Worth updating Phase 1.1's own doc (or noting the
-supersession somewhere central) so a future session doesn't get tripped up
-by the same contradiction.
+plan that got superseded. (See `Phase-0-Scaffold-and-Packaging.md` for the
+dedicated architecture-pivot document this session's finding independently
+confirmed.)
 
 ## 1. Decisions made
 
@@ -125,9 +134,8 @@ fine as informational text, but nothing on it should be clickable.
 **Future direction (not this phase):** import by section/subsection, or a
 preview screen letting the user deselect individual rows before committing.
 That's a backend change (the Compendium route would need to accept a filter
-or a two-phase preview/commit flow) as well as a UI one — flag it as a
-forward note in `Documentation/outline.md` now so a later design session
-isn't reconstructing this context from scratch the way this one had to.
+or a two-phase preview/commit flow) as well as a UI one — flagged here so a
+later design session isn't reconstructing this context from scratch.
 
 ### 1.6 Re-run action for Compendium/File sources
 
@@ -268,7 +276,7 @@ event reports something else (post-resume).
 
 ---
 
-## 5. Implementation Instructions for Claude Code
+## 5. Implementation Instructions for Claude Code (historical — already executed)
 
 1. **Backend first.** Add `COMPENDIUM` and `JSON_FILE` to the `ImportJobType`
    enum. Update the Compendium import route to write `jobType: 'COMPENDIUM'`
@@ -300,5 +308,4 @@ event reports something else (post-resume).
    path end-to-end with a real duplicate-triggering Compendium file — confirm
    the SSE connection survives the pause, the panel swaps in and out
    correctly, and `resume` continues the same job rather than creating a new
-   one. The outline's existing Phase 6.3 test list in `Documentation/outline.md`
-   stays valid as written.
+   one.

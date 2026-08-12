@@ -1,11 +1,25 @@
+# Phase 2 — Open5e Import: Design Notes
+
+> Part of the `Documentation/v1.0.0/` phase-document set — see
+> `v1.0.0-Roadmap.md` for the build-plan checklist and task log this design
+> rationale supports. Consolidated from `phase-2-import-final-export.md`.
+> Implementation log, including real corrections found against live API
+> data: `DevTools/Notes/v0.2.notes.md`.
+
+---
+
 # DragonLedger DatabaseApp — Phase 2 Import: Final Design Export
 
 **Reconciliation note (added after later sessions):** three things below are now superseded elsewhere and should be read with this in mind rather than taken at face value:
-1. **Database target changed from Azure SQL Server to local SQLite** after this document was written (see `architecture-addendum-local-sqlite.md`) — references to SQL Server's parameter limits below reflect the original assumption, not the current target.
+1. **Database target changed from Azure SQL Server to local SQLite** after this document was written (see `Phase-0-Scaffold-and-Packaging.md`) — references to SQL Server's parameter limits below reflect the original assumption, not the current target (implementation recalculated the chunk size for SQLite — see the v1.0.0 Roadmap's Phase 2 build plan).
 2. **`ImportJobStatus` gained a new value**, `AWAITING_CONFIRMATION`, added during the Compendium sessions for the cross-source duplicate-check flow — not reflected in Section 3's schema block below.
-3. **The delete-and-replace refresh mechanism described here applies specifically to Open5e (`API`-type) sources.** The Compendium uses a different, additive-only, never-overwrite mechanism instead (see `compendium-race-subrace-reimport-safety-export.md`, Section 4) — the two are deliberately different, not variations of one mechanism.
+3. **The delete-and-replace refresh mechanism described here applies specifically to Open5e (`API`-type) sources.** The Compendium uses a different, additive-only, never-overwrite mechanism instead (see `Phase-2.5-Compendium-Import.md`, Section 4) — the two are deliberately different, not variations of one mechanism.
 
-The current, fully reconciled schema lives in `dragonledger-master-schema.md`. This document's decisions and reasoning (batching, retries, validation approach, field mappings) remain accurate for Open5e specifically; only the three items above are stale.
+The current, fully reconciled schema lives in
+`Documentation/v1.0.0/FlowCharts_ERDs/dragonledger-master-schema.md`. This
+document's decisions and reasoning (batching, retries, validation approach,
+field mappings) remain accurate for Open5e specifically; only the three
+items above are stale.
 
 ## 1. Decisions Made
 
@@ -17,7 +31,7 @@ Reasoning: App Service free-tier idling can silently kill an in-memory job mid-r
 
 ### 1.2 Batch Insert Strategy
 
-Chunk size: 500 rows per `createMany` call (originally sized against SQL Server's ~2100 parameter limit; SQLite's own default parameter limit — typically 999, sometimes higher depending on build — is actually more restrictive for the widest model, Monster, so this chunk size should be re-verified rather than assumed safe now that the target database has changed).
+Chunk size: 500 rows per `createMany` call (originally sized against SQL Server's ~2100 parameter limit; SQLite's own default parameter limit — typically 999, sometimes higher depending on build — is actually more restrictive for the widest model, Monster, so this chunk size needed re-verification once the target database changed — **resolved during implementation**: `computeChunkSize(columnCount) = floor(900 / columnCount)` per model).
 
 Rollback boundary: **whole content type**, not per-chunk. If one bad record breaks a chunk, the entire content type's transaction rolls back — not just that chunk — so you never end up with a partial, oddly-truncated set (e.g. 2000 of 2500 monsters). Other content types in the same import are unaffected and keep their successfully imported data. Reasoning: imports are already re-runnable (delete-and-replace), so re-running one failed type after a fix is cheap and unambiguous; a half-imported type is confusing to browse and hard to reason about.
 
@@ -27,7 +41,7 @@ Retry with exponential backoff on Open5e fetch failures: 3 attempts, base 500ms 
 
 ### 1.4 Validation Strategy
 
-Zod, one schema module per content type (`server/src/schemas/content/*.ts`), each exporting a full schema (create/import) and a `.partial()` variant (PATCH). Shared between Phase 2's import validation and Phase 4's write-API validation — no duplication, both live in the same Express server. A future client-side shared package (`@dragonledger/content-types`) is a later concern, not now.
+Zod, one schema module per content type (`server/src/schemas/content/*.ts`), each exporting a full schema (create/import) and a `.partial()` variant (PATCH). Shared between Phase 2's import validation and Phase 4's write-API validation — no duplication, both live in the same Express server. (A future client-side shared package, `@dragonledger/content-types`, was built in Phase 7.)
 
 ### 1.5 Field Mapping Approach
 
@@ -54,7 +68,7 @@ Heroes' existing import-map docs (`DragonLedger_Heroes/DevNotes/API_ImportMaps/*
 | `verbal`/`somatic`/`material` | `components` | Collapsed to a short string, e.g. `"V, S, M"`. |
 | `material_specified` | `material` | Material description text, or `null`. |
 | `document.key` | `sourceId` | Resolved to `Source.id` at import time. |
-| `casting_options[]` | `extraData.castingOptions` | `null` if the array is a single no-op default entry. **Full array preserved** if any entry beyond default has real data (differing range/duration/damage per casting mode). |
+| `casting_options[]` | `extraData.castingOptions` | `null` if the array is a single no-op default entry. **Full array preserved** if any entry beyond default has real data (differing range/duration/damage per casting mode). (**Renamed to `extraData.scaling` in Phase 2.6** — see `Phase-2.6-Schema-Expansion.md`.) |
 
 Everything else (`damage_roll`, `damage_types[]`, `saving_throw_ability`, `attack_roll`, `target_type`/`target_count`, `shape_type`/`shape_size`/`shape_size_unit`, `reaction_condition`, `material_cost`, `material_consumed`) → `extraData`, no dedicated columns.
 
@@ -75,7 +89,7 @@ Edge case handling: **when the description fallback is used** (no entry matches 
 
 ### 2.3 Races & Subraces
 
-Schema: `ContentRace` and `ContentSubrace` are separate tables. `ContentSubrace.raceId` is a FK to `ContentRace.id`, `onDelete: NoAction` (same reasoning as Subclass→Class — avoids SQL Server rejecting a second cascade path to the same table, since `ContentSubrace` already cascades from `Source`).
+Schema: `ContentRace` and `ContentSubrace` are separate tables. `ContentSubrace.raceId` is a FK to `ContentRace.id` — originally `onDelete: NoAction` (same reasoning as Subclass→Class), **later changed to nullable + `SetNull` in Phase 4** to support cross-source homebrew.
 
 Size/Speed extraction: match the trait **by name** (`"Size"`/`"Speed"`, case-insensitive) — confirmed against real sampled data that `traits[].type` is `null` for 2014-era content but populated for 2024, so name-matching works consistently across both. Parse `desc` the same way for both eras. `size` is a JSON array (usually one entry, sometimes two — e.g. Human/Tiefling's "Medium or Small, chosen when you select this species" → `["small","medium"]`). Default `["medium"]`/`{walk: 30}` only if no such trait exists at all.
 
@@ -131,14 +145,14 @@ Schema change: `primaryAbility` restructured from a flat array to `{ abilities: 
 | `hit_dice` (or `hit_points.hit_dice`, when the nested object is present) | `hitDie` | Prefer the nested `hit_points.hit_dice` object when present (verified in real samples); otherwise infer from a "Hit Dice"/"Hit Points" feature; fall back to a hardcoded SRD lookup table as a last resort. |
 | `primary_abilities[]` | `primaryAbility` | `{ abilities: [...], logic }` per schema change above. |
 | `saving_throws[]` | `savingThrows` | Plain JSON array — always fixed per class, no choice involved. |
-| *(features scan, "Skills"-type)* | `skillChoices` | Fixed/Choice Grant Shape, parsed from the matching feature's prose — no dedicated API field for this. Needs verification against a live sample before implementation. |
+| *(features scan, "Skills"-type)* | `skillChoices` | Fixed/Choice Grant Shape, parsed from the matching feature's prose — no dedicated API field for this. **Verified during implementation** to actually live in a single `CORE_TRAITS_TABLE`-typed feature (a markdown table), not scattered named-feature prose — see the implementation log. |
 | *(features scan, armor-type)* | `armorProfs` | Plain JSON array, parsed from feature prose. |
 | *(features scan, weapon-type)* | `weaponProfs` | Same. |
 | `caster_type` | `extraData.casterType` | Stored as-is (`NONE`/`FULL`/`HALF`). |
 | *(hardcoded lookup by class name)* | `spellcastingAbility` | `null` if `caster_type = NONE`; otherwise looked up (Wizard→INT, Cleric/Druid/Ranger→WIS, Bard/Sorcerer/Warlock/Paladin→CHA, etc.) — Open5e doesn't expose this directly. |
 | `desc` | `description` | `null` if blank. |
 | `document.key` | `sourceId` | Resolved to `Source.id`. |
-| `features[]` (all, excluding ones consumed above) | `extraData.features` | Structured array `[{ name, description, type, levels: [...] }]` — no separate features table exists here. |
+| `features[]` (all, excluding ones consumed above) | `extraData.features` | Structured array `[{ name, description, type, levels: [...] }]` — no separate features table exists here. (**Superseded in Phase 2.6** by the real `ContentClassFeature` relation table, one row per level.) |
 
 Subclasses: `key`→`slug`, `name`→`name`, `subclass_of.key`→`classId` (resolved; **import classes before subclasses**), `desc`→`description`, `document.key`→`sourceId` (may legitimately differ from the parent class's source — confirmed intentional, e.g. A5E splatbook subclasses for core classes), `features[]`→`extraData.features` (same shape as class features).
 
@@ -198,12 +212,12 @@ Schema addition: `ContentMonster.damageVulnerabilities String?` — this app's s
 | `armor_class` | `armorClass` | Direct copy (Int). For multi-form creatures (werewolves etc.), store the higher/combat-relevant AC. |
 | `hit_points` | `hitPoints` | Direct copy (Int) — stored directly, no need to derive from `hit_dice`. |
 | `hit_dice` | `hitDice` | Stored as-is, no parsing. |
-| `challenge_rating` | `challengeRating` | Stored as string (handles fractions like `"1/8"`). |
+| `challenge_rating` | `challengeRating` | Stored as string (handles fractions like `"1/8"`). **Real correction:** the raw API field is a float (`0.25`), not a pre-formatted fraction string — converted via `formatChallengeRating`. |
 | `speed_all` | `speed` | JSON, full object as-is. |
 | `ability_scores` | `abilityScores` | JSON as-is; `modifiers` not stored (derivable). |
-| `saving_throws` (proficient-only) | `savingThrows` | JSON, `null` if empty. |
-| `skill_bonuses` (proficient-only) | `skills` | JSON, `null` if empty. |
-| `resistances_and_immunities.damage_resistances` | `damageResistances` | JSON array of type keys, `null` if empty. |
+| `saving_throws` (proficient-only) | `savingThrows` | JSON, `null` if empty. **Real correction:** the raw field includes all six abilities (including non-proficient raw modifiers), not filtered to proficient-only as originally assumed. |
+| `skill_bonuses` (proficient-only) | `skills` | JSON, `null` if empty — this one genuinely *is* proficient-only. |
+| `resistances_and_immunities.damage_resistances` | `damageResistances` | JSON array of type keys, `null` if empty. (**Reparsed via the shared composite parser in Phase 2.6**, from the `_display` string.) |
 | `resistances_and_immunities.damage_immunities` | `damageImmunities` | Same. |
 | `resistances_and_immunities.damage_vulnerabilities` | `damageVulnerabilities` | Same — new column. |
 | `resistances_and_immunities.condition_immunities` | `conditionImmunities` | Same. |
@@ -212,14 +226,14 @@ Schema addition: `ContentMonster.damageVulnerabilities String?` — this app's s
 | `description` | `description` | `null` if blank. |
 | `document.key` | `sourceId` | Resolved to `Source.id`. |
 | Multi-form AC text (e.g. Werewolf's `"11 in humanoid form, 12 in wolf/hybrid form"`) | `extraData.armorClassDetail` | Full breakdown preserved alongside the single stored `armorClass` Int. |
-| `actions[]` (type `ACTION`/`BONUS_ACTION`/`REACTION`/`MYTHIC_ACTION`) | `actions` | Single JSON array, each entry tagged with its own `actionType` (`"action"`/`"bonus"`/`"reaction"`) since there are no separate per-type columns. Dice **composed**, not copied: `"{damage_die_count}d{damage_die_type}+{damage_bonus}"`. Attack bonus read from `to_hit_mod` (not `attack_bonus` — corrected from Heroes' docs after live verification). Form-restricted action names (e.g. `"Bite (Wolf or Hybrid Form Only)"`) need no special handling — the restriction is already part of the name/desc text being preserved as-is. |
+| `actions[]` (type `ACTION`/`BONUS_ACTION`/`REACTION`/`MYTHIC_ACTION`) | `actions` | Single JSON array, each entry tagged with its own `actionType` (`"action"`/`"bonus"`/`"reaction"`) since there are no separate per-type columns. Dice **composed**, not copied: `"{damage_die_count}d{damage_die_type}+{damage_bonus}"`. Attack bonus read from `to_hit_mod` (not `attack_bonus` — corrected from Heroes' docs after live verification). Form-restricted action names (e.g. `"Bite (Wolf or Hybrid Form Only)"`) need no special handling — the restriction is already part of the name/desc text being preserved as-is. **Real correction:** `Spellcasting` is filed under `actions[]` for 2024 content, not `traits[]` as originally assumed. |
 | `actions[]` (type `LEGENDARY_ACTION`) | `legendaryActions` | Dedicated field. |
 | `actions[]` (type `LAIR_ACTION`) | `extraData.lairActions` | No dedicated column. |
 | `traits[]` | `extraData.traits` | `[{ name, description }]` — no dedicated traits column on Monster (unlike Race). |
-| Trait named `"Spellcasting"`/`"Innate Spellcasting"` | `extraData.spellcasting` | Parsed into `{ ability, atWill: [...], slots: { "1": [...], ... }, cantrips: [...] }`, spell names slugified for a best-effort name match against `ContentSpell.slug` (not a real FK — a lookup hint only, since source and slug may not align). Original raw trait is *also* kept in `extraData.traits` — the parse is additive, not a replacement. Unmatched names are left as plain strings. |
+| Trait named `"Spellcasting"`/`"Innate Spellcasting"` | `extraData.spellcasting` | Parsed into `{ ability, atWill: [...], slots: { "1": [...], ... }, cantrips: [...] }`, spell names slugified for a best-effort name match against `ContentSpell.slug` (not a real FK — a lookup hint only, since source and slug may not align). Original raw trait is *also* kept in `extraData.traits` — the parse is additive, not a replacement. Unmatched names are left as plain strings. (**A real spell-name-matching read API was later built in Phase 8**, for the Monster+Spellcasting packet — see `Phase-8-Card-Theming.md`.) |
 | `proficiency_bonus` | `extraData.proficiencyBonus` | Inferred from the CR-to-proficiency table when `null` (same pattern as Classes) — no dedicated column exists. |
 | *(parsed from a "Legendary Resistance (N/Day)" trait, if present)* | `extraData.legendaryResistances` | Parsed count, defaulting to `0`. |
-| `experience_points`, `category`, `subcategory` | `extraData` | No dedicated columns. |
+| `experience_points`, `category`, `subcategory` | `extraData` | No dedicated columns. (**`experiencePoints` promoted to a real column in Phase 2.6.**) |
 
 ## 3. Schema Additions
 
@@ -377,7 +391,9 @@ async function importSource(sourceId: string, contentTypes: ContentType[], jobId
 - **The embedded `weapon` object on an `/v2/items/` record may not carry `range`/`long_range`** — only the *standalone* `/v2/weapons/` endpoint reliably does; a secondary lookup by key may be required.
 - **v1 and v2 are not the same content, not just old/new API shapes.** v2 = SRD 2024 (this project's actual import target); v1 = SRD 2014 + most third-party books. Confirmed by direct fetch: `/v1/classes/` returned an old flat shape (`prof_armor`, `hit_dice` as a populated string) while `/v2/creatures/?document__key__in=srd-2024` returned the rich nested shape Heroes documented.
 
-## 7. Implementation Instructions for Claude Code
+(Additional real corrections found during implementation itself — Classes' `CORE_TRAITS_TABLE`, Monster's `challenge_rating` float and unfiltered `saving_throws`, 2024's `type:"feat"` background benefit, the confirmed zero-Conditions gap for `srd-2024` — are logged in full in `DevTools/Notes/v0.2.notes.md`.)
+
+## 7. Implementation Instructions for Claude Code (historical — already executed)
 
 1. Add the schema changes from Section 3 to `prisma/schema.prisma` (new `ImportJob` model, new `ContentSubrace` model, `ContentRace.parentRaceId` + relation, `ContentMonster.damageVulnerabilities`, and the field-shape changes to `ContentClass.primaryAbility` / `ContentBackground.proficiencies`).
 2. Run `prisma migrate dev --name phase2-import-additions`.
@@ -389,5 +405,5 @@ async function importSource(sourceId: string, contentTypes: ContentType[], jobId
 8. Before running a full import against live Open5e data, verify against a real API response (not just this document) the fields flagged as "needs verification" in Section 2.5 (Classes' `skillChoices`/`armorProfs`/`weaponProfs` parsing, since these aren't direct API fields but parsed from feature prose).
 9. Confirm the small hardcoded lookup tables (hit die fallback, spellcasting ability by class, multiclass AND/OR logic by class) cover all SRD 2024 classes before considering Classes import complete.
 10. Write the five per-race lineage parsers (Elf, Dragonborn, Gnome, Goliath, Tiefling) as isolated, individually testable functions — each has a genuinely different table/prose shape and should not share a single generic parser.
-11. Update `database.mmd` to reflect the new `ImportJob`/`ContentSubrace` models and the `ContentRace`/`ContentMonster`/`ContentClass`/`ContentBackground` field changes.
+11. Update the master schema doc to reflect the new `ImportJob`/`ContentSubrace` models and the `ContentRace`/`ContentMonster`/`ContentClass`/`ContentBackground` field changes.
 12. Verify FK constraints: `ContentSubclass.classId` → `ContentClass` (`NoAction`), `ContentSubrace.raceId` → `ContentRace` (`NoAction`), `ContentRace.parentRaceId` → `ContentRace` self-relation (`NoAction`), `ImportJob.sourceId` → `Source`.

@@ -1,6 +1,6 @@
 // Raw shapes for `Complete_Compendium_5.5e.xml`, as produced by fast-xml-parser
 // with the config in xmlParser.ts. Verified against the real file (see
-// DevTools/Claude/phase-2.5.md) — several diverge from what the design docs
+// DevTools/Notes/v0.2.notes.md) — several diverge from what the design docs
 // assumed, since those were checked against only one or two sample files.
 
 export interface CompendiumTrait {
@@ -61,7 +61,7 @@ export interface CompendiumMonster {
 
 // Real shape: the dice expression is the element's own text content, with
 // description/level as attributes — not nested child elements as first
-// assumed (see DevTools/Claude/phase-2.5.md). fast-xml-parser collapses to
+// assumed (see DevTools/Notes/v0.2.notes.md). fast-xml-parser collapses to
 // a bare string when a <roll> has no attributes at all.
 export type CompendiumSpellRoll =
   | string

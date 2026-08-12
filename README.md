@@ -45,9 +45,9 @@ This is a content management tool. It is intentionally simpler than DragonLedger
 > **Architecture note:** this app originally targeted a hosted Azure SQL +
 > Azure App Service deployment. That was superseded mid-build once it became
 > clear the app is genuinely single-user with no need for a shared, always-on
-> database — see `Documentation/architecture-addendum-local-sqlite.md` for the
-> full reasoning. No schema or API design changed as a result, only where and
-> how the app runs.
+> database — see `Documentation/v1.0.0/Phase-0-Scaffold-and-Packaging.md` for
+> the full reasoning. No schema or API design changed as a result, only where
+> and how the app runs.
 
 ---
 
@@ -94,14 +94,14 @@ This is a content management tool. It is intentionally simpler than DragonLedger
   DevTools/
     Logs/                   Runtime application logs (gitignored)
     Tests/                  Test run logs (gitignored)
-    Claude/                 Per-phase dev logs + design-session process logs
+    Notes/                  Per-version-line dev logs (v<major>.<minor>.notes.md)
 
   Documentation/
-    outline.md              Full phase-by-phase build plan with checkboxes
-    tasks.md                 Actionable per-phase implementation checklist
-    *-final-export.md        Detailed design decisions per phase (Phase 2/4/5/7, Compendium)
-    architecture-addendum-local-sqlite.md   The SQLite/Electron pivot, in full
-    FlowCharts_ERDs/dragonledger-master-schema.md   Current, reconciled Prisma schema + ER diagram
+    v1.0.0/
+      v1.0.0-Roadmap.md      Full build plan, task log, and resolved-decisions record
+      Phase-*.md              One consolidated design-decision doc per phase
+      FlowCharts_ERDs/dragonledger-master-schema.md   Current, reconciled Prisma schema + ER diagram
+    v2.0.0/                  Future work, currently empty
 ```
 
 ---
@@ -234,10 +234,10 @@ There are no user accounts. If you know the password, you have full write access
 - React + Vite + Tailwind v4 + shadcn/ui client scaffold
 - React Router with Layout + Outlet, placeholder screens, Login screen
 - All Phase 0 tests passing
-- ⚠️ Prisma still needs its `datasource` block switched from SQL Server to SQLite (`Documentation/architecture-addendum-local-sqlite.md`)
+- ⚠️ Prisma still needs its `datasource` block switched from SQL Server to SQLite (`Documentation/v1.0.0/Phase-0-Scaffold-and-Packaging.md`)
 
 ### Phase 0.7 — Desktop Packaging (Electron) (next, moved up front)
-**Decided:** build the Electron shell now, right after Phase 0, rather than deferring it to the end — see `Documentation/outline.md` §Phase 0.7. Still labeled "Phase 8" in some design docs (naming carried over from the original design session) but scheduled to happen here in the build order.
+**Decided:** build the Electron shell now, right after Phase 0, rather than deferring it to the end — see `Documentation/v1.0.0/v1.0.0-Roadmap.md` §Phase 0.7. Still labeled "Phase 8" in some design docs (naming carried over from the original design session) but scheduled to happen here in the build order.
 
 ### Phase 1 — Database Schema & Source API
 - Define all current Prisma models (`Source`, `ImportJob`, 8 content types, `ContentSubrace`, `ContentClassOption`, `Language` — 13 models total, up from the original 9)
@@ -246,7 +246,7 @@ There are no user accounts. If you know the password, you have full write access
 - Seed the `homebrew` source and the `Language` table
 
 ### Phases 2–7 (planned)
-See `Documentation/outline.md` for the full design/decisions reference and `Documentation/tasks.md` for the actionable per-phase checklist.
+See `Documentation/v1.0.0/v1.0.0-Roadmap.md` for the full design/decisions reference and actionable per-phase checklist.
 
 | Phase | Scope |
 |---|---|
@@ -260,10 +260,9 @@ See `Documentation/outline.md` for the full design/decisions reference and `Docu
 
 (Desktop packaging, originally planned as a final "Phase 8," is now Phase 0.7 above — there's no separate deployment phase left at the end.)
 
-Design decisions for Phases 2, 4, 5, 7, and the Compendium import are fully
-settled — see the corresponding `Documentation/*-final-export.md` files. A
-consolidated list of remaining open questions and unverified assumptions lives
-at the bottom of `Documentation/outline.md`.
+Design decisions for every phase are fully settled — see the corresponding
+`Documentation/v1.0.0/Phase-*.md` file. The (now-resolved) open-questions
+record lives in `Documentation/v1.0.0/v1.0.0-Roadmap.md` Part 4.
 
 ---
 

@@ -15,7 +15,7 @@ import type { CompendiumRace, CompendiumRaceTrait } from './types.js'
 // documented "ParentRace, SubraceName" comma convention. Per a deliberate
 // scope decision, only the literal outside-parens comma pattern creates a
 // parent link; everything else imports as its own independent race — see
-// DevTools/Claude/phase-2.5.md.
+// DevTools/Notes/v0.2.notes.md.
 function splitParentSubraceName(name: string): { parentName: string; subraceName: string } | null {
   let depth = 0
   for (let i = 0; i < name.length; i++) {

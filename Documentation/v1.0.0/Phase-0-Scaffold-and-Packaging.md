@@ -1,3 +1,11 @@
+# Phase 0 — Project Scaffold & Desktop Packaging: Design Notes
+
+> Part of the `Documentation/v1.0.0/` phase-document set — see
+> `v1.0.0-Roadmap.md` for the build-plan checklist and task log this design
+> rationale supports. Consolidated from `architecture-addendum-local-sqlite.md`.
+
+---
+
 # DragonLedger DatabaseApp — Architecture Addendum: Local SQLite, No Hosting
 
 This document captures a cross-cutting architecture decision made during the Phase 5 design session, superseding the tech-stack line in every prior brief (Phase 1.1 through Phase 5) that specifies **Azure SQL Database** and a hosted API. It does not change any schema, mapping, or endpoint design already completed — only where and how the app runs.
@@ -31,7 +39,7 @@ datasource db {
 | Database | Azure SQL Database | SQLite (local file), via Prisma's `sqlite` provider |
 | Hosting | Implied Azure App Service or similar | None — runs entirely on the user's own machine |
 
-**Downgraded, not removed:** the password-gated write-auth middleware built in Phase 0 protects against a different threat model than originally assumed (a hosted service reachable by anyone with the URL, vs. an app only reachable by whoever is sitting at the machine it's running on). It's not necessarily wrong to keep, but its priority/necessity should be reconsidered rather than assumed unchanged.
+**Downgraded, not removed:** the password-gated write-auth middleware built in Phase 0 protects against a different threat model than originally assumed (a hosted service reachable by anyone with the URL, vs. an app only reachable by whoever is sitting at the machine it's running on). It's not necessarily wrong to keep, but its priority/necessity should be reconsidered rather than assumed unchanged. (**Resolved, see the v1.0.0 Roadmap's Phase 0.5** — retired/no-op'd for the local build, revisit for Heroes integration.)
 
 ## 3. How the App Runs
 
@@ -45,7 +53,7 @@ For day-to-day *use* (once built, not being actively developed), a simpler singl
 
 Electron provides a real Node.js environment as its backend, so the existing Express server runs directly inside Electron's own process — no rewrite, no separate server binary — with Electron opening a window pointed at it instead of the user opening a browser tab manually. `electron-builder` packages the compiled frontend, the Express server, and a bundled Node runtime into a double-clickable `.app`, producing a signed/notarized `.dmg` for macOS distribution.
 
-**Status: not yet decided whether to build this now or defer until Phases 5–7 are functionally complete.** Flagged as an open implementation-sequencing question, not a design one — this document only settles *how* packaging would work, not *when* to do it.
+**Status at time of writing: not yet decided whether to build this now or defer until Phases 5–7 are functionally complete.** (**Resolved:** built up front, right after Phase 0's scaffold — see Phase 0.7 in the v1.0.0 Roadmap.)
 
 ## 5. Data Persistence Across App Updates
 
@@ -61,9 +69,9 @@ On every app launch, running `prisma migrate deploy` (the non-interactive, produ
 
 **Recommended habit, specifically because data now lives outside the app bundle:** back up the `userData` SQLite file (a plain file copy) before installing any version that includes new migrations. Prisma's migration tooling is well-tested, but a crash mid-migration (power loss, force-quit) remains a real, if rare, risk with any database — cheap insurance given how easy backing up a single file is.
 
-## 7. Open Items
+## 7. Open Items (as of this document's original writing — see Roadmap for current status)
 
-- Packaging timeline (build Electron wrapper now vs. after Phases 5–7 ship) — not decided.
-- Whether to formally retire the Phase 0 write-auth middleware, keep it as-is, or repurpose it for something else now that the threat model has changed — flagged, not decided.
+- Packaging timeline (build Electron wrapper now vs. after Phases 5–7 ship) — **resolved: built up front.**
+- Whether to formally retire the Phase 0 write-auth middleware, keep it as-is, or repurpose it for something else now that the threat model has changed — **resolved: retired/no-op'd, revisit for Heroes.**
 - Every existing brief (Phase 1.1, 2, 4, 5, and the not-yet-run Phase 7) should be considered to have its tech-stack line superseded by Section 2 above; none currently reference this document since it postdates them.
 - **Phase 6's design brief independently re-derived this same contradiction** (its own Phase 1.1 doc still says "hosted web app on Azure SQL") before this addendum was found — confirms the addendum's supersession list above, no new decision needed. Added here as the pointer a future session should find first.

@@ -1,6 +1,16 @@
+# Phase 7 — Edit & Create UI: Design Notes
+
+> Part of the `Documentation/v1.0.0/` phase-document set — see
+> `v1.0.0-Roadmap.md` for the build-plan checklist and task log this design
+> rationale supports. Consolidated from `phase-7-edit-create-ui-final-export.md`.
+> Implementation logs: `DevTools/Notes/v0.6.notes.md` (design follow-ups,
+> foundation layer) and `v0.7.notes.md` (per-type form/card build-out).
+
+---
+
 # DragonLedger DatabaseApp — Phase 7 Edit & Create UI: Final Design Export
 
-**Note:** this phase now covers **8 content types**, not the original brief's 7 — Feat was added during the Compendium sessions. `ContentClassOption` (Metamagic/Invocations/Maneuvers) is not included as its own form; whether it needs one, or is edited as part of its parent Class, remains an open decision (see Section 6).
+**Note:** this phase covers **8 content types** (Feat was added during the Compendium sessions). `ContentClassOption` (Metamagic/Invocations/Maneuvers) is not included as its own form — **resolved: edited within its parent Class's form**, see the v1.0.0 Roadmap Part 4, Section 0.1.
 
 ## 1. Decisions Made
 
@@ -22,7 +32,7 @@ react-hook-form + Zod (the standard shadcn/ui pairing), using react-hook-form's 
 
 **Already resolved by Phase 4's "Correctable Fields" mechanism** — not a new Phase 7 decision. The Save button's behavior updates live as the user edits: while every currently-changed field is on that content type's Correctable Fields list, the button reads "Save" and submits in place with no interruption, even on an official entry. The moment any non-correctable field becomes dirty, the button's label/behavior switches to "Save as..." (prompting original-vs-homebrew), without a separate modal interrupt step. This makes the distinction visible to the user as they type, not a surprise at submit time.
 
-**Underlying rule revised (2026-08-08, see `phase-4-write-api-final-export.md` §4):** what counts as "correctable" is no longer a per-type curated field list — it's now source-type-based. An **Open5e (`API`)** entry has zero correctable fields, so editing *any* field on it always flips the button to "Save as..." immediately. A **Compendium (`FILE`)** entry has every field correctable except the fixed lock list (`name`, `slug`, `sourceId`, and the parent-relation FK on Subclass/Subrace) — editing `name` flips to "Save as...", everything else stays "Save." A **`MANUAL`** (homebrew) entry is unaffected — always "Save," no prompt. The live-updating button behavior itself doesn't change, only which fields it treats as correctable per entry.
+**Underlying rule revised (2026-08-08, see `Phase-4-Write-API.md` §4):** what counts as "correctable" is no longer a per-type curated field list — it's now source-type-based. An **Open5e (`API`)** entry has zero correctable fields, so editing *any* field on it always flips the button to "Save as..." immediately. A **Compendium (`FILE`)** entry has every field correctable except the fixed lock list (`name`, `slug`, `sourceId`, and the parent-relation FK on Subclass/Subrace) — editing `name` flips to "Save as...", everything else stays "Save." A **`MANUAL`** (homebrew) entry is unaffected — always "Save," no prompt. The live-updating button behavior itself doesn't change, only which fields it treats as correctable per entry.
 
 ### 1.5 Unsaved-Changes Handling
 
@@ -30,8 +40,7 @@ A route-leave guard warns before discarding unsaved changes (navigating to Brows
 
 ### 1.6 Per-Type Form Layout Base Pattern — RESOLVED (2026-08-08)
 
-Added as the base template for the 7.2 per-type sessions (roadmap
-`v1-roadmap-open-decisions.md`), before any individual type's fields are
+Added as the base template for the 7.2 per-type sessions, before any individual type's fields are
 designed:
 
 - **Form layout mirrors the card, field-for-field.** `<Type>Form` isn't a
@@ -55,7 +64,7 @@ designed:
   always safe to commit in place, at any granularity) rather than
   introducing a second, parallel per-field Save-As mechanism.
 - **Revised (2026-08-08):** correctability is now source-type-based, not a
-  per-type curated list (see §1.4 and `phase-4-write-api-final-export.md`
+  per-type curated list (see §1.4 and `Phase-4-Write-API.md`
   §4). Practical effect for this per-field save affordance: on an
   Open5e-sourced entry, **no field ever gets a per-field save button** —
   every edit goes through whole-form Save-As. On a Compendium-sourced
@@ -74,7 +83,7 @@ designed:
 
 Defaults to the seeded, non-deletable `"homebrew"` Source (Phase 4) automatically, with a dropdown available to redirect to a different `MANUAL` source. Matches how `saveAs: "homebrew"` already resolves to this same source by default when no target is specified — the create form's default is a natural continuation of that existing behavior, not a new pattern.
 
-**Stretch goal, not core scope:** the create-form source default may eventually be user-configurable — either a single global preference, or a richer per-content-type preference map (e.g. new Spells default to one homebrew collection, new Monsters to another). Exact shape deliberately left undecided; noted as a future direction rather than committed to prematurely.
+**Stretch goal, not core scope:** the create-form source default may eventually be user-configurable — either a single global preference, or a richer per-content-type preference map (e.g. new Spells default to one homebrew collection, new Monsters to another). Exact shape deliberately left undecided; noted as a future direction rather than committed to prematurely. **Still deferred as of v1.0.0.**
 
 ## 2. Component Breakdown
 
@@ -97,7 +106,7 @@ Shared/reusable across the whole app, not just this phase: `SourcePicker` (a var
 
 ## 3. Field-Config Reference (Template for the Hand-Built Approach)
 
-Since forms are hand-built rather than config-driven, no single config-object shape needs designing. Instead, each future per-type form session should follow this template, using Spell as the worked example:
+Since forms are hand-built rather than config-driven, no single config-object shape needs designing. Instead, each per-type form session followed this template, using Spell as the worked example:
 
 ```
 SpellForm
@@ -121,7 +130,7 @@ SpellForm
 ├── SaveButton / SaveAsPrompt
 ```
 
-Each future per-type session should: (1) fill in this same structure for its content type, reading required/nullable directly off that type's Zod schema; (2) confirm/refine that type's Correctable Fields list (a real gap flagged back in Phase 4 — several types never got theirs defined); (3) decide how much of `extraData` gets real form fields vs. staying import-only/read-only in the edit UI.
+Each per-type session followed: (1) fill in this same structure for its content type, reading required/nullable directly off that type's Zod schema; (2) confirm/refine that type's Correctable Fields list; (3) decide how much of `extraData` gets real form fields vs. staying import-only/read-only in the edit UI.
 
 ## 4. JSON-Widget Plan
 
@@ -139,13 +148,15 @@ Every field below requires a real structured widget per Section 1.3 — no excep
 | `ContentMonster.damageResistances`/`.damageImmunities`/`.damageVulnerabilities`/`.conditionImmunities` | `ResistanceListWidget` | Needs to represent the composite shape from the Compendium sessions — plain `{type}` entries alongside the special "B/P/S from nonmagical, unless [bypassedBy]" composite entry as a distinct, recognizable row type, not force-fit into a generic list. |
 | `extraData.spellcasting` (Monster) | `SpellcastingWidget` | Ability select, slot-level entries, and a spell-name list — ideally with the same name-matching-against-`ContentSpell` behavior the importer already does, surfaced as an autocomplete rather than free text. |
 
-## 5. Implementation Instructions for Claude Code
+(A `TagListWidget` was also built during implementation, not in this original catalog — needed for `Spell.classes`, simple enough not to warrant its own design pass. See `DevTools/Notes/v0.7.notes.md`.)
+
+## 5. Implementation Instructions for Claude Code (historical — already executed)
 
 1. Set up the `@dragonledger/content-types` workspace package (Section 1.2) — move/establish the Zod schemas here first, since both server and client code will depend on it going forward. This is foundational and should happen before any form work begins.
 2. Install `react-hook-form` and its Zod resolver package in `client/`.
 3. Build `FixedChoiceGrantWidget` first, before any specific content-type form — it's the most-reused widget (Section 4) and several other widgets (`TraitListWidget`) compose it internally.
 4. Build the remaining shared widgets from Section 4's table.
 5. Build `SourcePicker`, `SaveButton`/`SaveAsPrompt` (wired to each content type's Correctable Fields subset schema per Phase 4's mechanism), `UnsavedChangesGuard`, and `CreateSourceInlineDialog`.
-6. Do not attempt all 8 (or 10, counting Subclass/Subrace) forms in one pass. Each content type's form needs its own short design session (Section 3's template) before being built — this phase's export intentionally stops at the shared infrastructure layer, not full per-type field lists, since those weren't decided in this session.
+6. Do not attempt all 8 (or 10, counting Subclass/Subrace) forms in one pass. Each content type's form needs its own short design session (Section 3's template) before being built.
 7. Before considering Phase 7 complete for a given content type: confirm its Correctable Fields list is real and reviewed (not copied blindly from another type), confirm every field's required/nullable treatment matches its Zod schema, and confirm the unsaved-changes guard and Save/Save-as behavior both function correctly against that type's actual field set.
-8. Resolve `ContentClassOption`'s form treatment (own form vs. edited within its parent Class) before or during whichever future session covers Class's form specifically — flagged as unresolved, not deferred by accident.
+8. Resolve `ContentClassOption`'s form treatment (own form vs. edited within its parent Class) before or during whichever future session covers Class's form specifically. (**Resolved: edited within `ClassForm`.**)

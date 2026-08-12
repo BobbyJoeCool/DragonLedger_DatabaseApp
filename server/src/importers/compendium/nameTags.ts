@@ -4,7 +4,7 @@
 // (Unearthed Arcana playtest) — plus arbitrary other bracketed qualifiers
 // (publisher/campaign names like `(Zamanora)`, `(OWM)`, book titles like
 // `(Book of Ebon Tides)`) that don't map to a known tag at all. See
-// DevTools/Claude/phase-2.5.md.
+// DevTools/Notes/v0.2.notes.md.
 export interface ParsedNameTags {
   name: string
   edition: '2014' | '2024' | null

@@ -6,7 +6,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const FIXTURES_PATH = resolve(__dirname, '../fixtures/compendium/samples.json')
 
 // Real records captured from Complete_Compendium_5.5e.xml (see
-// DevTools/Claude/phase-2.5.md) — not hand-written approximations.
+// DevTools/Notes/v0.2.notes.md) — not hand-written approximations.
 const samples = JSON.parse(readFileSync(FIXTURES_PATH, 'utf-8'))
 
 export function compendiumFixture<T>(name: keyof typeof samples): T {

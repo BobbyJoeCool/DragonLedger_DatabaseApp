@@ -4,7 +4,7 @@ import type { CompendiumDocument } from './types.js'
 // Elements that repeat and must always come through as arrays, even when a
 // given record happens to have exactly one (fast-xml-parser otherwise
 // collapses a single occurrence to a bare object). Verified against the
-// real file, not guessed — see DevTools/Claude/phase-2.5.md.
+// real file, not guessed — see DevTools/Notes/v0.2.notes.md.
 const ARRAY_TAGS = new Set([
   'class',
   'race',

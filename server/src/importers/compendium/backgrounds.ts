@@ -17,7 +17,7 @@ import type { TransformedRecord } from './feats.js'
 // element with a colon-labeled name ("Ability Scores: Intelligence,
 // Wisdom, Charisma", "Feat: Magic Initiate (Cleric)", "Tool Proficiency:
 // Choose one kind of Artisan's Tools") — no bullet-parsing needed at all,
-// just reading each trait's own name. See DevTools/Claude/phase-2.5.md.
+// just reading each trait's own name. See DevTools/Notes/v0.2.notes.md.
 function traitLabel(trait: CompendiumBackgroundTrait): { label: string | null; detail: string } {
   const name = trait.name ?? ''
   const colonIndex = name.indexOf(':')

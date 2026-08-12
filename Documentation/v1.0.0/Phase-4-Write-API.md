@@ -1,6 +1,15 @@
+# Phase 4 — Content Write API: Design Notes
+
+> Part of the `Documentation/v1.0.0/` phase-document set — see
+> `v1.0.0-Roadmap.md` for the build-plan checklist and task log this design
+> rationale supports. Consolidated from `phase-4-write-api-final-export.md`.
+> Implementation log: `DevTools/Notes/v0.4.notes.md`.
+
+---
+
 # DragonLedger DatabaseApp — Phase 4 Write API: Final Design Export
 
-**Reconciliation note (added after later sessions):** `ContentClassOption` (Metamagic/Eldritch Invocations/Maneuvers) didn't exist when this document was written and has the **same dependency shape as `ContentSubclass`** — a nullable `classId` FK with `onDelete: SetNull`. Section 1.7's Class-delete dependent-check logic should be treated as applying to `ContentClassOption` identically to how it applies to `ContentSubclass` (check for dependents, split by MANUAL/non-MANUAL, same confirm/cancel flow) — this wasn't written explicitly into Section 1.7 or Section 3's endpoint contract below, since the table didn't exist yet. Implementation should extend the dependent-lookup query to cover both tables, not just `ContentSubclass`.
+**Reconciliation note (added after later sessions):** `ContentClassOption` (Metamagic/Eldritch Invocations/Maneuvers) didn't exist when this document was written and has the **same dependency shape as `ContentSubclass`** — a nullable `classId` FK with `onDelete: SetNull`. Section 1.7's Class-delete dependent-check logic should be treated as applying to `ContentClassOption` identically to how it applies to `ContentSubclass` (check for dependents, split by MANUAL/non-MANUAL, same confirm/cancel flow) — this wasn't written explicitly into Section 1.7 or Section 3's endpoint contract below, since the table didn't exist yet. Implementation extended the dependent-lookup query to cover both tables, not just `ContentSubclass`.
 
 ## 1. Decisions Made
 
@@ -181,7 +190,7 @@ Request body: `{ confirmName: "<source's exact name>" }`.
 **Superseded rule.** The original per-type, parser-derived-fields criterion
 below (kept for historical context) has been replaced by a **source-type-based
 rule**, decided during a Phase 7 design session once it became clear the two
-importer refresh semantics (Section "Data Model Overview" in `outline.md`)
+importer refresh semantics (see the v1.0.0 Roadmap's "Data Model Overview")
 map directly onto what's safe to edit in place:
 
 - **`API` sources (Open5e):** refreshed by delete-and-replace. **No field is
@@ -283,16 +292,9 @@ Otherwise, fall through to the standard `saveAs` flow (which still short-
 circuits to in-place for `MANUAL` entries, per the existing passthrough
 branch).
 
-**Code impact — not yet applied, flagged for implementation:** the live
-`server/src/routes/content/writeHandlers.ts` `createPatchHandler` currently
-runs the correctable-schema check *before* looking up the entry's source at
-all (checks the schema, then falls through to a separate source-type lookup
-only after a non-correctable result). That ordering needs to change so the
-source-type check gates the correctable check as shown above. Every content
-type's `<Type>CorrectableSchema` (`server/src/schemas/content/*.ts`) also
-needs to be regenerated from `.omit({ name, slug, sourceId, ...FK if present })`
-instead of the old hand-picked field lists. See `DevTools/Claude/phase-4.md`
-for the full list of what was previously picked per type, now superseded.
+**Code impact:** implemented in the Phase 7 foundation-layer pass — see
+`DevTools/Notes/v0.6.notes.md` for the full before/after detail (schema
+regeneration via `.omit()`, `createPatchHandler` reordering).
 
 ---
 
@@ -312,7 +314,7 @@ revision). This list and its "regardless of source type" behavior are now
 superseded by the source-type-based rule above — kept here only so the
 reasoning isn't lost, not as a current spec.
 
-## 5. Implementation Instructions for Claude Code
+## 5. Implementation Instructions for Claude Code (historical — already executed)
 
 1. Add the schema changes from Section 2 to `prisma/schema.prisma` (`ContentSubclass.classId`/`ContentSubrace.raceId` nullable with `onDelete: SetNull`).
 2. Run `prisma migrate dev --name phase4-write-api`.
@@ -325,5 +327,5 @@ reasoning isn't lost, not as a current spec.
 9. Implement `DELETE /api/sources/:id/entries` as a new route, reusing the delete-all-content-for-sourceId logic already needed by Phase 2's `importSource`.
 10. Update `DELETE /api/sources/:id` (existing Phase 1.2 endpoint) to include the post-delete `warnings` array — no pre-check needed here, per Section 1.7's table.
 11. Update Phase 2's `importSource` orchestrator to run the post-refresh orphan check (any subclass/subrace with a `null` parent link) and attach results to `ImportJob.warnings`.
-12. Update `database.mmd` to reflect the nullable FK changes and the seeded Homebrew source.
+12. Update `dragonledger-master-schema.md` to reflect the nullable FK changes and the seeded Homebrew source.
 13. Verify the full delete/orphan flow end-to-end before considering Phase 4 complete: delete an official class with both an official and a homebrew subclass attached, confirm the official subclass is gone, the homebrew one is `null`-parented and listed in the response, and that a subsequent refresh of that class's source doesn't error out.

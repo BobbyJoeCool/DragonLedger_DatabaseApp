@@ -1,8 +1,19 @@
+# Phase 5 — Browse UI: Design Notes
+
+> Part of the `Documentation/v1.0.0/` phase-document set — see
+> `v1.0.0-Roadmap.md` for the build-plan checklist and task log this design
+> rationale supports. Consolidated from `phase-5-browse-ui-final-export.md`.
+> Per-type results-table columns and the printable detail "card" were both
+> deferred by this document to Phase 8 — see `Phase-8-Card-Theming.md`.
+> Implementation log: `DevTools/Notes/v0.5.notes.md`.
+
+---
+
 # DragonLedger DatabaseApp — Phase 5 Browse UI: Final Design Export
 
-Note: this brief's tech-stack assumptions (hosted API, Azure SQL) were superseded mid-session by an architecture pivot to a fully local, SQLite-backed, eventually Electron-packaged app. See `architecture-addendum-local-sqlite.md` for that decision in full. Nothing below changes as a result of that pivot — Browse is a client-side design and doesn't care where or how the API is hosted — but it's worth reading alongside this document for full context.
+Note: this brief's tech-stack assumptions (hosted API, Azure SQL) were superseded mid-session by an architecture pivot to a fully local, SQLite-backed, eventually Electron-packaged app. See `Phase-0-Scaffold-and-Packaging.md` for that decision in full. Nothing below changes as a result of that pivot — Browse is a client-side design and doesn't care where or how the API is hosted — but it's worth reading alongside this document for full context.
 
-**Reconciliation note (added after later sessions):** this document was designed around exactly seven content types (Spells, Classes, Races, Backgrounds, Conditions, Items, Monsters). The Compendium sessions added an **eighth: Feat**, a genuine top-level browsable type (not a variant of an existing one) — it needs its own sidebar entry, its own `FeatFilterBar` (likely just the Source + search baseline, plus a `category` filter), and its own `<Type>Card` design. `ContentClassOption` (Metamagic/Invocations/Maneuvers) is **not** a new Browse tab — it's class-gated content, more naturally surfaced from a Class's own detail view than as a top-level browsable list, though this wasn't explicitly decided and is worth a deliberate call rather than an assumption. Every "seven"/"7" reference below should be read as needing a `+1` for Feat.
+**Reconciliation note (added after later sessions):** this document was designed around exactly seven content types (Spells, Classes, Races, Backgrounds, Conditions, Items, Monsters). The Compendium sessions added an **eighth: Feat**, a genuine top-level browsable type (not a variant of an existing one) — it needs its own sidebar entry, its own `FeatFilterBar` (likely just the Source + search baseline, plus a `category` filter), and its own `<Type>Card` design. `ContentClassOption` (Metamagic/Invocations/Maneuvers) is **not** a new Browse tab — it's class-gated content, more naturally surfaced from a Class's own detail view than as a top-level browsable list (this was later confirmed as a deliberate decision, not just a lean — see the v1.0.0 Roadmap Part 4, Section 0.1). Every "seven"/"7" reference below should be read as needing a `+1` for Feat.
 
 ## 1. Decisions Made
 
@@ -41,7 +52,7 @@ A custom-built multi-select (checkboxes, not shadcn's stock single-select dropdo
 
 ### 1.7 Results List Layout: Table
 
-**Revised after this export.** Originally decided as a card grid, used unconditionally with no responsive fallback. That's been superseded: the results list is a **table**, not cards. "Card" now refers specifically to the full-content, printable per-type display shown in `DetailScreen` once a record is selected (Section 2's `<Type>DetailFields`) — not a summary tile in this list. Per-type column layout for the table is not decided here, same status as the per-type card design below: deferred to its own session. Data reference for that session: `Documentation/card-design-spec.md`.
+**Revised after this export.** Originally decided as a card grid, used unconditionally with no responsive fallback. That's been superseded: the results list is a **table**, not cards. "Card" now refers specifically to the full-content, printable per-type display shown in `DetailScreen` once a record is selected (Section 2's `<Type>DetailFields`) — not a summary tile in this list. Per-type column layout for the table is not decided here, same status as the per-type card design below: deferred to its own session (**resolved in Phase 8** — see `Phase-8-Card-Theming.md`, which also folds in the `card-design-spec.md` data reference).
 
 ## 2. Component Breakdown
 
@@ -66,7 +77,7 @@ DetailScreen
 │                                 "card" per Decision 1.7's revision; layout
 │                                 approach not decided in this phase — its own
 │                                 design session, data reference at
-│                                 Documentation/card-design-spec.md)
+│                                 card-design-spec.md, now in Phase-8-Card-Theming.md)
 ├── EditButton                  (auth-gated; opens Phase 7's edit form)
 └── DeleteButton                (auth-gated; confirmation dialog per Phase 4's
                                   { confirm: true } contract)
@@ -119,7 +130,7 @@ type BrowseState = Record<ContentType, {
 
 This object lives in memory only, for the current session — no persistence to localStorage/sessionStorage (per the project's artifact/browser-storage constraints, and because there's no cross-session persistence need established for this app).
 
-## 5. Implementation Instructions for Claude Code
+## 5. Implementation Instructions for Claude Code (historical — already executed)
 
 1. Install `@tanstack/react-query` and `@tanstack/react-virtual` (`npm install @tanstack/react-query @tanstack/react-virtual` in `client/`).
 2. Set up a `QueryClientProvider` at the app root if not already present.
@@ -130,5 +141,5 @@ This object lives in memory only, for the current session — no persistence to 
 7. Build `ResultsTable` and `PositionBar` — this is the most involved piece of the phase (Decision 1.5); budget real time for scroll-math/jank issues. Defer `<Type>Row` column internals (just render placeholder rows for now) until the deferred per-type column-design session happens.
 8. Build `BrowseScreen`, wiring the sidebar, per-type `BrowseState`, filter bar, and results table together.
 9. Build `DetailScreen` with `Breadcrumb`, `SourceBadge`, a placeholder `<Type>DetailFields`, and the auth-gated Edit/Delete buttons (Delete wired to Phase 4's `DELETE /api/:type/:id` with `{ confirm: true }`, behind a confirmation dialog).
-10. Do not consider Phase 5 fully complete until: (a) the dedicated per-content-type table-row design session happens, and (b) the dedicated `<Type>DetailFields` ("card") design session happens and produces the full-content, printable layout per type (flagged as unresolved in this export; data reference at `Documentation/card-design-spec.md`).
+10. Do not consider Phase 5 fully complete until: (a) the dedicated per-content-type table-row design session happens, and (b) the dedicated `<Type>DetailFields` ("card") design session happens and produces the full-content, printable layout per type. (**Both resolved in Phase 8.**)
 11. Verify before moving to Phase 5's own test-writing step: switching between all 7 content types preserves each one's filter state independently within a session; the position bar drag shows live names from the index without triggering full-record fetches; dragging to an arbitrary position correctly renders that neighborhood of records without needing to fetch everything in between.

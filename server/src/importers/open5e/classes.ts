@@ -12,7 +12,7 @@ import type { Open5eClass, Open5eFeature } from './types.js'
 // originally assumed — they live in one feature typed CORE_TRAITS_TABLE,
 // a markdown pipe table keyed by row label (Primary Ability, Hit Point Die,
 // Saving Throw Proficiencies, Skill Proficiencies, Weapon Proficiencies,
-// Armor Training, Starting Equipment). See DevTools/Claude/phase-2.md.
+// Armor Training, Starting Equipment). See DevTools/Notes/v0.2.notes.md.
 function parseCoreTraitsTable(features: Open5eFeature[]): Record<string, string> {
   const feature = features.find((f) => f.feature_type === 'CORE_TRAITS_TABLE')
   if (!feature) return {}

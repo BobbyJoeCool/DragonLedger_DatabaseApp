@@ -2,7 +2,7 @@
 // transforms actually read. Field shapes verified against live API
 // responses (see server/src/__tests__/fixtures/open5e/) rather than taken
 // from documentation alone; several diverge from what the original design
-// doc assumed (see DevTools/Claude/phase-2.md for the corrections list).
+// doc assumed (see DevTools/Notes/v0.2.notes.md for the corrections list).
 
 export interface Open5eDocument {
   key: string
