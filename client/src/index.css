@@ -146,11 +146,14 @@
   }
 }
 
+/* Scopes the theme's CSS custom properties + font over its subtree —
+   deliberately paints no background/color of its own. This wrapper is not
+   width-constrained (it sits in the app's normal layout flow above the
+   card), so painting the theme background here would bleed past the
+   card's own edges; `.dl-frame`/`.dl-tc-card` (the actual bordered card
+   boxes) paint it instead. */
 .dl-card-theme {
-  background: var(--card-bg);
-  color: var(--card-ink);
   font-family: var(--card-font-body);
-  position: relative;
 }
 
 .dl-font-display {
@@ -181,6 +184,8 @@
 
 .dl-frame {
   position: relative;
+  background: var(--card-bg);
+  color: var(--card-ink);
   border: 2.5px solid var(--card-rule);
   outline: 1px solid var(--card-rule);
   outline-offset: 4px;
@@ -191,8 +196,13 @@
 }
 
 /* Parchment's procedural SVG turbulence texture — non-editable on the
-   locked preset, absent on every other theme/custom build. */
-.dl-parchment-texture {
+   locked preset, absent on every other theme/custom build. A pseudo-element
+   on each actual card box (not a JSX sibling on the full-width theme
+   wrapper) so it's clipped to the card's own edges, same reasoning as
+   `.dl-frame`'s background above. */
+[data-card-theme='parchment'] .dl-frame::after,
+[data-card-theme='parchment'] .dl-tc-card::after {
+  content: '';
   position: absolute;
   inset: 0;
   pointer-events: none;
@@ -349,6 +359,7 @@
 }
 
 .dl-tc-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   border: 1px dashed var(--card-muted);

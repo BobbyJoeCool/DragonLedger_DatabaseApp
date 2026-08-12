@@ -37,7 +37,10 @@ export function extractCitation(rawText: string | number): ParsedCitation {
     return { book: null, page: null, additionalCitations: [], cleanedText }
   }
 
-  const pageMatch = first.match(/^(.*?)\s*p\.?\s*(\d+)\s*$/i)
+  // Anything after the page number (e.g. " (Homebrew)", " (Third Party)")
+  // is real but must not leak into the book title — omit it here rather
+  // than requiring the digits to be the very end of the string.
+  const pageMatch = first.match(/^(.*?)\s*p\.?\s*(\d+)\b.*$/i)
   const book = pageMatch ? pageMatch[1].trim() : first
   const page = pageMatch ? pageMatch[2] : null
 

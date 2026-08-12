@@ -194,7 +194,7 @@ export function transformCompendiumClass(raw: CompendiumClass): TransformedClass
   if (tags.thirdParty) extraData.thirdParty = true
   if (tags.unearthedArcana) extraData.unearthedArcana = true
   if (tags.otherTags.length > 0) extraData.otherTags = tags.otherTags
-  if (raw.tools && raw.tools.toLowerCase() !== 'none') extraData.toolProfs = raw.tools
+  if (raw.tools && raw.tools.toLowerCase() !== 'none') extraData.toolProfs = [raw.tools]
   if (raw.slotsReset) extraData.slotsReset = raw.slotsReset
   if (citation.page) extraData.page = citation.page
 
