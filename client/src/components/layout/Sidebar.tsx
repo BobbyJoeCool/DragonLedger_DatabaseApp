@@ -1,4 +1,5 @@
 import { NavLink, useNavigate } from 'react-router'
+import { ThemeToggle } from '../ThemeToggle'
 
 const navItems = [
   { to: '/browse', label: 'Browse' },
@@ -37,22 +38,25 @@ export function Sidebar() {
         ))}
       </nav>
       <div className="border-t p-2">
-        {isSignedIn ? (
-          <button
-            type="button"
-            onClick={handleSignOut}
-            className="w-full rounded px-3 py-2 text-left text-sm text-sidebar-foreground hover:bg-sidebar-accent/50"
-          >
-            Sign out
-          </button>
-        ) : (
-          <NavLink
-            to="/login"
-            className="block rounded px-3 py-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent/50"
-          >
-            Sign in
-          </NavLink>
-        )}
+        <div className="flex items-center justify-between">
+          {isSignedIn ? (
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="rounded px-3 py-2 text-left text-sm text-sidebar-foreground hover:bg-sidebar-accent/50"
+            >
+              Sign out
+            </button>
+          ) : (
+            <NavLink
+              to="/login"
+              className="block rounded px-3 py-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent/50"
+            >
+              Sign in
+            </NavLink>
+          )}
+          <ThemeToggle />
+        </div>
       </div>
     </aside>
   )
