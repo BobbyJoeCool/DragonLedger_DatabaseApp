@@ -4,6 +4,8 @@ import { ThemeToggle } from '../ThemeToggle'
 
 const navItems = [
   { to: '/browse', label: 'Browse' },
+  { to: '/create', label: 'Create' },
+  { to: '/display', label: 'Display' },
   { to: '/sources', label: 'Sources' },
 ]
 

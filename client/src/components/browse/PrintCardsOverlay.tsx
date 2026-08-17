@@ -41,7 +41,7 @@ export function PrintCardsOverlay({ type, entries, onClose }: PrintCardsOverlayP
       </div>
 
       <CardThemeProvider theme={theme}>
-        <style>{`@media print { @page { margin: 0.5in; } }`}</style>
+        <style>{`@media print { @page { margin: 0.5in; } body, html { background: white !important; color: black !important; } }`}</style>
         <div className="space-y-6 p-6 print:space-y-0 print:p-2">
           {entries.map((entry) => (
             <div key={entry.id as string} className="break-inside-avoid print:pb-4">

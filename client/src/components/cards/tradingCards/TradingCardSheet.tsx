@@ -48,6 +48,7 @@ export function TradingCardSheet({ label, sources, onClose }: TradingCardSheetPr
       </div>
 
       <CardThemeProvider theme={theme}>
+        <style>{`@media print { body, html { background: white !important; color: black !important; } }`}</style>
         <div className="space-y-6 p-6 print:space-y-0 print:p-0">
           {sheets.map((sheetCards, i) => (
             <div className="dl-tc-sheet" key={i}>

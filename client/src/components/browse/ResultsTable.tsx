@@ -147,13 +147,15 @@ export function ResultsTable({ type, filters, selection, onItemClick }: ResultsT
     if (pageAllSelected) {
       selection.deselectPage(ids)
     } else {
-      selection.selectPage(ids)
+      const names = new Map(loadedItems.map((item) => [item.id, item.name]))
+      selection.selectPage(ids, names)
     }
   }
 
   function handleSelectAllFiltered() {
     if (nameIndexQuery.data) {
-      selection.selectAll(nameIndexQuery.data.map((entry) => entry.id))
+      const names = new Map(nameIndexQuery.data.map((entry) => [entry.id, entry.name]))
+      selection.selectAll(nameIndexQuery.data.map((entry) => entry.id), names)
     }
   }
 
@@ -231,7 +233,7 @@ export function ResultsTable({ type, filters, selection, onItemClick }: ResultsT
                       <input
                         type="checkbox"
                         checked={selection.isSelected(item.id)}
-                        onChange={() => selection.toggle(item.id)}
+                        onChange={() => selection.toggle(item.id, item.name)}
                         onClick={(e) => e.stopPropagation()}
                         className="mr-2 h-4 w-4 shrink-0 accent-primary"
                         aria-label={`Select ${item.name}`}

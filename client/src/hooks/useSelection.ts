@@ -4,10 +4,10 @@ export interface SelectionState {
   selectedIds: Set<string>
   count: number
   isSelected: (id: string) => boolean
-  toggle: (id: string) => void
-  selectAll: (ids: string[]) => void
+  toggle: (id: string, name?: string) => void
+  selectAll: (ids: string[], names?: Map<string, string>) => void
   clearAll: () => void
-  selectPage: (ids: string[]) => void
+  selectPage: (ids: string[], names?: Map<string, string>) => void
   deselectPage: (ids: string[]) => void
 }
 

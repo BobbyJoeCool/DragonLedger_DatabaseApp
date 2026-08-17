@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '@/api/client'
@@ -11,7 +11,7 @@ import { Modal } from '@/components/ui/Modal'
 import { defaultFilters, allFieldsParams, apiPath, type ContentFilters } from '@/lib/contentQuery'
 import { CONTENT_TYPES, CONTENT_TYPE_LABELS, CONTENT_TYPE_SINGULAR, type ContentType } from '@/lib/contentTypes'
 import { FILTER_BARS } from '@/lib/filterBarRegistry'
-import { useSelection } from '@/hooks/useSelection'
+import { useDisplaySelection } from '@/hooks/useDisplaySelection'
 import type { DependentEntry } from './browseTypes'
 
 type BrowseState = Record<ContentType, ContentFilters>
@@ -31,8 +31,8 @@ export function BrowseScreen() {
   const [activeType, setActiveType] = useState<ContentType>('spells')
   const [browseState, setBrowseState] = useState<BrowseState>(initialBrowseState)
   const isSignedIn = Boolean(sessionStorage.getItem('app-password'))
-  const selection = useSelection()
   const queryClient = useQueryClient()
+  const selection = useDisplaySelection(activeType)
 
   const FilterBar = FILTER_BARS[activeType]
   const filters = browseState[activeType]
@@ -40,17 +40,6 @@ export function BrowseScreen() {
   const [bulkDeleteState, setBulkDeleteState] = useState<BulkDeleteState>({ step: 'idle' })
   const [printFullCards, setPrintFullCards] = useState<Record<string, unknown>[] | null>(null)
   const [detailId, setDetailId] = useState<string | null>(null)
-
-  useEffect(() => {
-    selection.clearAll()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeType])
-
-  const filterSignature = JSON.stringify(filters)
-  useEffect(() => {
-    selection.clearAll()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterSignature])
 
   function updateFilters(next: ContentFilters) {
     setBrowseState((prev) => ({ ...prev, [activeType]: next }))

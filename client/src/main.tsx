@@ -13,6 +13,8 @@ import { SubraceDetailScreen } from '@/screens/SubraceDetailScreen'
 import { SubraceForm } from '@/components/content/SubraceForm'
 import { SubclassDetailScreen } from '@/screens/SubclassDetailScreen'
 import { SubclassForm } from '@/components/content/SubclassForm'
+import { CreateHubScreen } from '@/screens/CreateHubScreen'
+import { DisplayScreen } from '@/screens/DisplayScreen'
 import { SourcesScreen } from '@/screens/SourcesScreen'
 import { ImportScreen } from '@/screens/ImportScreen'
 import { LoginScreen } from '@/screens/LoginScreen'
@@ -39,6 +41,8 @@ const router = createBrowserRouter([
       { path: 'browse/:type/new', element: <CreateScreen /> },
       { path: 'browse/:type/:id', element: <DetailScreen /> },
       { path: 'browse/:type/:id/edit', element: <EditScreen /> },
+      { path: 'create', element: <CreateHubScreen /> },
+      { path: 'display', element: <DisplayScreen /> },
       { path: 'sources', element: <SourcesScreen /> },
       { path: 'sources/import', element: <ImportScreen /> },
     ],
