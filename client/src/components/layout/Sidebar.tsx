@@ -1,4 +1,5 @@
 import { NavLink, useNavigate } from 'react-router'
+import { isElectron } from '@/lib/electronApi'
 import { ThemeToggle } from '../ThemeToggle'
 
 const navItems = [
@@ -17,7 +18,7 @@ export function Sidebar() {
 
   return (
     <aside className="flex w-56 flex-col border-r bg-sidebar">
-      <div className="border-b p-4">
+      <div className={`border-b p-4 ${isElectron() ? 'pl-20' : ''}`}>
         <h1 className="text-sm font-semibold">DragonLedger</h1>
       </div>
       <nav className="flex-1 space-y-1 p-2">

@@ -1,16 +1,43 @@
+import { useQuery } from '@tanstack/react-query'
+import { apiFetch } from '@/api/client'
 import { FilterBarShell } from './FilterBarShell'
 import type { ContentFilters } from '@/lib/contentQuery'
 
-const inputClass =
+const selectClass =
   'rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring'
+
+const SCHOOLS = [
+  'abjuration',
+  'conjuration',
+  'divination',
+  'enchantment',
+  'evocation',
+  'illusion',
+  'necromancy',
+  'transmutation',
+] as const
+
+function titleCase(s: string) {
+  return s.charAt(0).toUpperCase() + s.slice(1)
+}
 
 interface SpellFilterBarProps {
   filters: ContentFilters
   onChange: (filters: ContentFilters) => void
 }
 
-// Extra filters per outline.md §3.2: level, school, class
 export function SpellFilterBar({ filters, onChange }: SpellFilterBarProps) {
+  const classNamesQuery = useQuery({
+    queryKey: ['class-names-for-filter'],
+    queryFn: async () => {
+      const res = await apiFetch('/api/classes?fields=name')
+      if (!res.ok) throw new Error('Failed to load classes')
+      const rows = (await res.json()) as { id: string; name: string }[]
+      return [...new Set(rows.map((r) => r.name))].sort()
+    },
+    staleTime: 60_000,
+  })
+
   function setExtra(key: string, value: string) {
     onChange({ ...filters, extra: { ...filters.extra, [key]: value } })
   }
@@ -20,7 +47,7 @@ export function SpellFilterBar({ filters, onChange }: SpellFilterBarProps) {
       <select
         value={filters.extra.level ?? ''}
         onChange={(e) => setExtra('level', e.target.value)}
-        className={inputClass}
+        className={selectClass}
       >
         <option value="">Any level</option>
         <option value="0">Cantrip</option>
@@ -30,20 +57,30 @@ export function SpellFilterBar({ filters, onChange }: SpellFilterBarProps) {
           </option>
         ))}
       </select>
-      <input
-        type="text"
+      <select
         value={filters.extra.school ?? ''}
         onChange={(e) => setExtra('school', e.target.value)}
-        placeholder="School (e.g. evocation)"
-        className={inputClass}
-      />
-      <input
-        type="text"
+        className={selectClass}
+      >
+        <option value="">Any school</option>
+        {SCHOOLS.map((school) => (
+          <option key={school} value={school}>
+            {titleCase(school)}
+          </option>
+        ))}
+      </select>
+      <select
         value={filters.extra.class ?? ''}
         onChange={(e) => setExtra('class', e.target.value)}
-        placeholder="Class (e.g. Wizard)"
-        className={inputClass}
-      />
+        className={selectClass}
+      >
+        <option value="">Any class</option>
+        {(classNamesQuery.data ?? []).map((name) => (
+          <option key={name} value={name}>
+            {name}
+          </option>
+        ))}
+      </select>
     </FilterBarShell>
   )
 }

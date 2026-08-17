@@ -37,15 +37,15 @@ const writeConfig = {
 
 // GET /api/monsters — filters: cr, type, source, q
 monstersRouter.get('/', async (req, res) => {
-  const { sourceIds, q, page, limit, skip, fieldsName } = parseListQuery(req)
+  const { sourceIds, sourceType, q, page, limit, skip, fieldsName, fieldsAll } = parseListQuery(req)
   const { cr, type } = req.query as Record<string, string | undefined>
 
   const where: Prisma.ContentMonsterWhereInput = {
-    ...sourceWhere(sourceIds),
+    ...sourceWhere(sourceIds, sourceType),
     ...(q ? { name: { contains: q } } : {}),
     // challengeRating is a String to hold fractions like "1/8" — exact match, not numeric comparison.
     ...(cr ? { challengeRating: cr } : {}),
-    ...(type ? { monsterType: type } : {}),
+    ...(type ? { monsterType: { contains: type } } : {}),
   }
 
   if (fieldsName) {
@@ -55,6 +55,12 @@ monstersRouter.get('/', async (req, res) => {
       select: { id: true, name: true },
     })
     res.json(rows)
+    return
+  }
+
+  if (fieldsAll) {
+    const rows = await prisma.contentMonster.findMany({ where, orderBy: { name: 'asc' } })
+    res.json(rows.map((r) => parseJsonFields(r, JSON_FIELDS)))
     return
   }
 

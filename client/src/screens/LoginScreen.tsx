@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { apiFetch } from '@/api/client'
+import { TitleBar } from '@/components/layout/TitleBar'
 
 export function LoginScreen() {
   const [password, setPassword] = useState('')
@@ -29,6 +30,8 @@ export function LoginScreen() {
   }
 
   return (
+    <>
+    <TitleBar />
     <div className="flex h-screen items-center justify-center bg-background">
       <div className="w-full max-w-sm space-y-6 rounded-lg border p-8">
         <div>
@@ -57,5 +60,6 @@ export function LoginScreen() {
         </form>
       </div>
     </div>
+    </>
   )
 }

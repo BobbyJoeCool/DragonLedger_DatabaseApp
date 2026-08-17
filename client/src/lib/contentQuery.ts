@@ -7,12 +7,13 @@ export const PAGE_LIMIT = 50
 // each <Type>FilterBar owns its own keys, this stays generic.
 export interface ContentFilters {
   sourceIds: string[]
+  sourceType: string
   query: string
   extra: Record<string, string>
 }
 
 export function defaultFilters(): ContentFilters {
-  return { sourceIds: [], query: '', extra: {} }
+  return { sourceIds: [], sourceType: '', query: '', extra: {} }
 }
 
 export interface ContentListItem {
@@ -39,6 +40,7 @@ export interface NameIndexEntry {
 function baseParams(filters: ContentFilters): URLSearchParams {
   const params = new URLSearchParams()
   for (const id of filters.sourceIds) params.append('source', id)
+  if (filters.sourceType) params.set('sourceType', filters.sourceType)
   if (filters.query) params.set('q', filters.query)
   for (const [key, value] of Object.entries(filters.extra)) {
     if (value) params.set(key, value)
@@ -73,7 +75,7 @@ export function allFieldsParams(filters: ContentFilters): URLSearchParams {
 // Stable key fragment shared by useContentList/useContentNameIndex — sorted
 // sourceIds so checkbox-toggle order never produces spurious cache misses.
 export function filterKey(type: ContentType, filters: ContentFilters) {
-  return [type, [...filters.sourceIds].sort(), filters.query, filters.extra] as const
+  return [type, [...filters.sourceIds].sort(), filters.sourceType, filters.query, filters.extra] as const
 }
 
 export function apiPath(type: ContentType): string {

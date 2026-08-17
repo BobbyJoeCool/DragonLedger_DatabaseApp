@@ -16,6 +16,7 @@ import { itemsRouter } from './routes/content/items.js'
 import { monstersRouter } from './routes/content/monsters.js'
 import { featsRouter } from './routes/content/feats.js'
 import { classOptionsRouter } from './routes/content/classOptions.js'
+import { bulkDeleteRouter } from './routes/content/bulkDelete.js'
 import { errorHandler } from './middleware/errorHandler.js'
 import { logger } from './lib/logger.js'
 
@@ -58,6 +59,7 @@ app.use('/api/items', itemsRouter)
 app.use('/api/monsters', monstersRouter)
 app.use('/api/feats', featsRouter)
 app.use('/api/class-options', classOptionsRouter)
+app.use('/api/content/bulk', bulkDeleteRouter)
 
 // Single-process production mode (Phase 0.7): when CLIENT_DIST_DIR is set,
 // Express serves the built React app alongside its own API routes on one

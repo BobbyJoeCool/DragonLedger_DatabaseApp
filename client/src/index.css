@@ -7,6 +7,7 @@
 @import "@fontsource/eb-garamond/400.css";
 @import "@fontsource/eb-garamond/500.css";
 @import "@fontsource/eb-garamond/700.css";
+@import "@fontsource/almendra-sc/400.css";
 
 @custom-variant dark (&:is(.dark *));
 

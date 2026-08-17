@@ -8,6 +8,7 @@ export const MAX_LIMIT = 200
 
 export interface ListQuery {
   sourceIds: string[]
+  sourceType?: string
   q?: string
   page: number
   limit: number
@@ -43,8 +44,11 @@ export function parseListQuery(req: Request): ListQuery {
   const source = query.source
   const sourceIds = Array.isArray(source) ? source : source ? [source] : []
 
+  const sourceType = (query.sourceType as string | undefined) || undefined
+
   return {
     sourceIds,
+    sourceType,
     q: (query.q as string | undefined) || undefined,
     page,
     limit,
@@ -57,8 +61,14 @@ export function parseListQuery(req: Request): ListQuery {
 // Shared `sourceId` where-fragment: filters to any of the given ids, or no
 // filter at all when the list is empty (SourceMultiSelect's "all checked"
 // default omits ?source= entirely rather than listing every id).
-export function sourceWhere(sourceIds: string[]): { sourceId?: { in: string[] } } {
-  return sourceIds.length > 0 ? { sourceId: { in: sourceIds } } : {}
+export function sourceWhere(
+  sourceIds: string[],
+  sourceType?: string,
+): { sourceId?: { in: string[] }; source?: { type: string } } {
+  return {
+    ...(sourceIds.length > 0 ? { sourceId: { in: sourceIds } } : {}),
+    ...(sourceType ? { source: { type: sourceType } } : {}),
+  }
 }
 
 export function envelope<T>(data: T[], total: number, page: number, limit: number) {

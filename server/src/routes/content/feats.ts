@@ -21,11 +21,11 @@ const writeConfig = {
 
 // GET /api/feats — filters: category, source, q
 featsRouter.get('/', async (req, res) => {
-  const { sourceIds, q, page, limit, skip, fieldsName } = parseListQuery(req)
+  const { sourceIds, sourceType, q, page, limit, skip, fieldsName, fieldsAll } = parseListQuery(req)
   const { category } = req.query as Record<string, string | undefined>
 
   const where: Prisma.ContentFeatWhereInput = {
-    ...sourceWhere(sourceIds),
+    ...sourceWhere(sourceIds, sourceType),
     ...(q ? { name: { contains: q } } : {}),
     ...(category ? { category } : {}),
   }
@@ -37,6 +37,12 @@ featsRouter.get('/', async (req, res) => {
       select: { id: true, name: true },
     })
     res.json(rows)
+    return
+  }
+
+  if (fieldsAll) {
+    const rows = await prisma.contentFeat.findMany({ where, orderBy: { name: 'asc' } })
+    res.json(rows.map((r) => parseJsonFields(r, JSON_FIELDS)))
     return
   }
 

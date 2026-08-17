@@ -25,11 +25,11 @@ const writeConfig = {
 
 // GET /api/subclasses — reached from a Class's card. filters: classId, source, q
 subclassesRouter.get('/', async (req, res) => {
-  const { sourceIds, q, page, limit, skip, fieldsName } = parseListQuery(req)
+  const { sourceIds, sourceType, q, page, limit, skip, fieldsName } = parseListQuery(req)
   const { classId } = req.query as Record<string, string | undefined>
 
   const where: Prisma.ContentSubclassWhereInput = {
-    ...sourceWhere(sourceIds),
+    ...sourceWhere(sourceIds, sourceType),
     ...(q ? { name: { contains: q } } : {}),
     ...(classId ? { classId } : {}),
   }

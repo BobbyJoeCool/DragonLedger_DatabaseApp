@@ -34,6 +34,19 @@ const execFileAsync = promisify(execFile)
 
 app.setName('DragonLedger')
 
+const windowOptions: Electron.BrowserWindowConstructorOptions = {
+  width: 1280,
+  height: 800,
+  show: false,
+  titleBarStyle: 'hiddenInset',
+  trafficLightPosition: { x: 16, y: 16 },
+  webPreferences: {
+    preload: getPreloadPath(),
+    contextIsolation: true,
+    nodeIntegration: false,
+  },
+}
+
 async function runMigrations(): Promise<void> {
   const schemaPath = path.join(getPrismaResourceDir(), 'schema.prisma')
   await execFileAsync(process.execPath, [getPrismaCliEntry(), 'migrate', 'deploy', '--schema', schemaPath], {
@@ -51,12 +64,7 @@ async function startServer(): Promise<number> {
 }
 
 function createWindow(port: number): void {
-  const win = new BrowserWindow({
-    width: 1280,
-    height: 800,
-    show: false,
-    webPreferences: { preload: getPreloadPath(), contextIsolation: true, nodeIntegration: false },
-  })
+  const win = new BrowserWindow(windowOptions)
   win.once('ready-to-show', () => win.show())
   win.loadURL(`http://localhost:${port}`)
 }
@@ -83,12 +91,7 @@ async function bootstrapProd(): Promise<void> {
 }
 
 async function bootstrapDev(startUrl: string): Promise<void> {
-  const win = new BrowserWindow({
-    width: 1280,
-    height: 800,
-    show: false,
-    webPreferences: { preload: getPreloadPath(), contextIsolation: true, nodeIntegration: false },
-  })
+  const win = new BrowserWindow(windowOptions)
   win.once('ready-to-show', () => win.show())
   win.loadURL(startUrl)
 }

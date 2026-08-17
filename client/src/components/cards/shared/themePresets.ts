@@ -23,11 +23,9 @@ export interface CardThemeTokens {
 export type LockedCardThemeName = 'parchment' | 'scribe' | 'grimoire'
 export type CardThemeName = LockedCardThemeName | 'custom'
 
-// Real webfont files (Almendra SC, Cinzel, IBM Plex Sans, EB Garamond)
-// aren't bundled yet — only @fontsource-variable/geist is installed. These
-// stacks name the intended font first so adding the real @fontsource
-// package later "just works" with no code change; until then they fall
-// back to a generic serif/sans-serif.
+// Webfont files are bundled via @fontsource packages (Almendra SC,
+// Cinzel, EB Garamond). IBM Plex Sans is not yet installed — Scribe's
+// Copy falls back to generic sans-serif until it is.
 export const CARD_THEME_PRESETS: Record<LockedCardThemeName, CardThemeTokens> = {
   parchment: {
     bg: '#E4D5A7',

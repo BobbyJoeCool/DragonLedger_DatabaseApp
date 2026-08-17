@@ -21,14 +21,16 @@ const writeConfig = {
 
 // GET /api/items — filters: type, rarity, source, q
 itemsRouter.get('/', async (req, res) => {
-  const { sourceIds, q, page, limit, skip, fieldsName, fieldsAll } = parseListQuery(req)
+  const { sourceIds, sourceType, q, page, limit, skip, fieldsName, fieldsAll } = parseListQuery(req)
   const { type, rarity } = req.query as Record<string, string | undefined>
 
   const where: Prisma.ContentItemWhereInput = {
-    ...sourceWhere(sourceIds),
+    ...sourceWhere(sourceIds, sourceType),
     ...(q ? { name: { contains: q } } : {}),
     ...(type ? { itemType: type } : {}),
-    ...(rarity ? { rarity } : {}),
+    ...(rarity
+      ? { OR: [{ rarity }, { rarity: { contains: `,-${rarity}` } }] }
+      : {}),
   }
 
   if (fieldsName) {

@@ -21,7 +21,7 @@ const writeConfig = {
 
 // GET /api/spells — filters: source, q, level, school, class
 spellsRouter.get('/', async (req, res) => {
-  const { sourceIds, q, page, limit, skip, fieldsName, fieldsAll } = parseListQuery(req)
+  const { sourceIds, sourceType, q, page, limit, skip, fieldsName, fieldsAll } = parseListQuery(req)
   const { level, school, class: className } = req.query as Record<string, string | undefined>
 
   if (level !== undefined && Number.isNaN(Number.parseInt(level, 10))) {
@@ -30,7 +30,7 @@ spellsRouter.get('/', async (req, res) => {
   }
 
   const where: Prisma.ContentSpellWhereInput = {
-    ...sourceWhere(sourceIds),
+    ...sourceWhere(sourceIds, sourceType),
     ...(q ? { name: { contains: q } } : {}),
     ...(level !== undefined ? { level: Number.parseInt(level, 10) } : {}),
     ...(school ? { school } : {}),

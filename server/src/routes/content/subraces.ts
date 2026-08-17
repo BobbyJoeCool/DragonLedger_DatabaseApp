@@ -25,11 +25,11 @@ const writeConfig = {
 
 // GET /api/subraces — reached from a Race's card. filters: raceId, source, q
 subracesRouter.get('/', async (req, res) => {
-  const { sourceIds, q, page, limit, skip, fieldsName } = parseListQuery(req)
+  const { sourceIds, sourceType, q, page, limit, skip, fieldsName } = parseListQuery(req)
   const { raceId } = req.query as Record<string, string | undefined>
 
   const where: Prisma.ContentSubraceWhereInput = {
-    ...sourceWhere(sourceIds),
+    ...sourceWhere(sourceIds, sourceType),
     ...(q ? { name: { contains: q } } : {}),
     ...(raceId ? { raceId } : {}),
   }
