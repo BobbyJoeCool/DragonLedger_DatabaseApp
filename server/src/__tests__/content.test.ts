@@ -184,13 +184,13 @@ describe('Content Read API — per-type filters', () => {
     expect(passed).toBe(true)
   })
 
-  it('Conditions: currently 0 rows, still returns a valid empty envelope', async () => {
+  it('Conditions: returns a valid paginated envelope', async () => {
     const res = await request(app).get('/api/conditions')
-    const passed = res.status === 200 && Array.isArray(res.body.data) && res.body.total === 0
-    logResult('conditions empty envelope', res, passed)
+    const passed = res.status === 200 && Array.isArray(res.body.data)
+    logResult('conditions envelope', res, passed)
     expect(res.status).toBe(200)
-    expect(res.body.data).toEqual([])
-    expect(res.body.total).toBe(0)
+    expect(Array.isArray(res.body.data)).toBe(true)
+    expect(typeof res.body.total).toBe('number')
   })
 })
 

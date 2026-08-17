@@ -102,8 +102,22 @@ export function createPatchHandler(config: ContentWriteConfig) {
       saveAs,
       targetSourceId,
       sourceId: _ignoredSourceId, // sourceId only ever changes via saveAs/targetSourceId, never a raw field edit
+      updatedAt: clientUpdatedAt,
       ...changedFields
     } = req.body as Record<string, unknown>
+
+    if (clientUpdatedAt != null) {
+      const clientDate = new Date(clientUpdatedAt as string).getTime()
+      const dbDate = new Date(existing.updatedAt as string).getTime()
+      if (clientDate !== dbDate) {
+        res.status(409).json(
+          errorResponse('CONFLICT', `${config.label} was modified since you last loaded it`, {
+            serverUpdatedAt: existing.updatedAt,
+          }),
+        )
+        return
+      }
+    }
 
     const respondUpdated = async (data: Record<string, unknown>) => {
       try {

@@ -70,11 +70,12 @@ model ImportJob {
 }
 
 model ContentSpell {
-  id            String  @id @default(cuid())
+  id            String   @id @default(cuid())
   slug          String
   sourceId      String
-  source        Source  @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  source        Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
   name          String
+  updatedAt     DateTime @default(now()) @updatedAt
   level         Int
   school        String
   castingTime   String
@@ -98,11 +99,12 @@ model ContentSpell {
 }
 
 model ContentClass {
-  id                  String  @id @default(cuid())
+  id                  String   @id @default(cuid())
   slug                String
   sourceId            String
-  source              Source  @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  source              Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
   name                String
+  updatedAt           DateTime @default(now()) @updatedAt
   hitDie              Int
   primaryAbility      String // JSON: { abilities: string[], logic: "AND"|"OR" }
   savingThrows        String // JSON array
@@ -128,6 +130,7 @@ model ContentSubclass {
   classId     String? // nullable per Phase 4 — was required with onDelete: NoAction originally
   class       ContentClass? @relation(fields: [classId], references: [id], onDelete: SetNull)
   name        String
+  updatedAt   DateTime      @default(now()) @updatedAt
   description String
   extraData   String? // unresolvedClassName if cross-source resolution (see Compendium docs) fails
 
@@ -149,6 +152,7 @@ model ContentClassFeature {
   subclass    ContentSubclass? @relation(fields: [subclassId], references: [id], onDelete: Cascade)
   level       Int
   name        String
+  updatedAt   DateTime         @default(now()) @updatedAt
   description String
   type        String? // Open5e's feature-type tag when known (e.g. CLASS_LEVEL_FEATURE); null on Compendium rows
 
@@ -157,11 +161,12 @@ model ContentClassFeature {
 }
 
 model ContentRace {
-  id          String  @id @default(cuid())
+  id          String   @id @default(cuid())
   slug        String
   sourceId    String
-  source      Source  @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  source      Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
   name        String
+  updatedAt   DateTime @default(now()) @updatedAt
   size        String // JSON array, e.g. ["medium"] or ["small","medium"]
   speed       String // JSON, { walk, fly?, swim? }
   traits      String // JSON array of { name, description, level, grant? }
@@ -184,6 +189,7 @@ model ContentSubrace {
   raceId      String? // nullable per Phase 4 — was required with onDelete: NoAction originally
   race        ContentRace? @relation(fields: [raceId], references: [id], onDelete: SetNull)
   name        String
+  updatedAt   DateTime     @default(now()) @updatedAt
   description String?
   size        String? // JSON array, null unless this subrace overrides the parent's
   speed       String? // JSON, null unless overridden
@@ -194,11 +200,12 @@ model ContentSubrace {
 }
 
 model ContentBackground {
-  id             String  @id @default(cuid())
+  id             String   @id @default(cuid())
   slug           String
   sourceId       String
-  source         Source  @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  source         Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
   name           String
+  updatedAt      DateTime @default(now()) @updatedAt
   proficiencies  String // JSON, Fixed/Choice Grant Shape, entries tagged category: "skill"|"tool"
   abilityBonuses String // JSON, Fixed/Choice Grant Shape (fixed is an object, not array)
   feature        String // JSON array of { name, description }
@@ -209,11 +216,12 @@ model ContentBackground {
 }
 
 model ContentCondition {
-  id          String  @id @default(cuid())
+  id          String   @id @default(cuid())
   slug        String
   sourceId    String
-  source      Source  @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  source      Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
   name        String
+  updatedAt   DateTime @default(now()) @updatedAt
   description String
   effects     String?
   extraData   String? // descriptionSource/requestedSource (when a fallback was used), icon
@@ -222,11 +230,12 @@ model ContentCondition {
 }
 
 model ContentItem {
-  id                 String  @id @default(cuid())
+  id                 String   @id @default(cuid())
   slug               String
   sourceId           String
-  source             Source  @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  source             Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
   name               String
+  updatedAt          DateTime @default(now()) @updatedAt
   itemType           String
   rarity             String?
   requiresAttunement Boolean
@@ -246,11 +255,12 @@ model ContentItem {
 }
 
 model ContentMonster {
-  id                    String  @id @default(cuid())
+  id                    String   @id @default(cuid())
   slug                  String
   sourceId              String
-  source                Source  @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  source                Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
   name                  String
+  updatedAt             DateTime @default(now()) @updatedAt
   size                  String
   monsterType           String
   alignment             String
@@ -282,11 +292,12 @@ model ContentMonster {
 }
 
 model ContentFeat {
-  id           String  @id @default(cuid())
+  id           String   @id @default(cuid())
   slug         String
   sourceId     String
-  source       Source  @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  source       Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
   name         String
+  updatedAt    DateTime @default(now()) @updatedAt
   category     String // "GENERAL" | "ORIGIN" | "FIGHTING_STYLE" | "EPIC_BOON" | "CLASS_SPECIFIC"
   prerequisite String?
   description  String
@@ -304,6 +315,7 @@ model ContentClassOption {
   class        ContentClass? @relation(fields: [classId], references: [id], onDelete: SetNull)
   pool         String // "Metamagic" | "Eldritch Invocation" | "Maneuver" | future pools
   name         String
+  updatedAt    DateTime      @default(now()) @updatedAt
   description  String
   prerequisite String?
   extraData    String?

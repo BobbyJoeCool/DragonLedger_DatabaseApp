@@ -2,7 +2,13 @@ import { Router } from 'express'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '../../db/client.js'
 import { requireAuth } from '../../middleware/auth.js'
-import { ClassCorrectableSchema, ClassPartialSchema, ClassSchema } from '@dragonledger/content-types'
+import {
+  ClassCorrectableSchema,
+  ClassPartialSchema,
+  ClassSchema,
+  ClassFeatureSchema,
+  ClassFeaturePartialSchema,
+} from '@dragonledger/content-types'
 import { errorResponse } from '../../utils/errorResponse.js'
 import {
   classifyDependents,
@@ -155,5 +161,84 @@ classesRouter.delete('/:id', requireAuth, async (req, res) => {
     await tx.contentClass.delete({ where: { id } })
   })
 
+  res.status(204).end()
+})
+
+// ── ClassFeature CRUD ──────────────────────────────────────────────
+
+// POST /api/classes/:classId/features (auth)
+classesRouter.post('/:classId/features', requireAuth, async (req, res) => {
+  const classId = req.params.classId as string
+  const cls = await prisma.contentClass.findUnique({ where: { id: classId } })
+  if (!cls) {
+    res.status(404).json(errorResponse('NOT_FOUND', 'Class not found'))
+    return
+  }
+
+  const parsed = ClassFeatureSchema.safeParse({ ...req.body, classId })
+  if (!parsed.success) {
+    res.status(400).json(errorResponse('VALIDATION', parsed.error.message))
+    return
+  }
+
+  const row = await prisma.contentClassFeature.create({
+    data: {
+      classId,
+      subclassId: null,
+      level: parsed.data.level,
+      name: parsed.data.name,
+      description: parsed.data.description,
+      type: parsed.data.type ?? null,
+    },
+  })
+  res.status(201).json(row)
+})
+
+// PATCH /api/classes/features/:featureId (auth)
+classesRouter.patch('/features/:featureId', requireAuth, async (req, res) => {
+  const featureId = req.params.featureId as string
+  const existing = await prisma.contentClassFeature.findUnique({ where: { id: featureId } })
+  if (!existing) {
+    res.status(404).json(errorResponse('NOT_FOUND', 'Class feature not found'))
+    return
+  }
+
+  const { updatedAt: clientUpdatedAt, ...bodyFields } = req.body as Record<string, unknown>
+
+  if (clientUpdatedAt != null) {
+    const clientDate = new Date(clientUpdatedAt as string).getTime()
+    const dbDate = new Date(existing.updatedAt as string).getTime()
+    if (clientDate !== dbDate) {
+      res.status(409).json(errorResponse('CONFLICT', 'Class feature was modified since you last loaded it', {
+        serverUpdatedAt: existing.updatedAt,
+      }))
+      return
+    }
+  }
+
+  const parsed = ClassFeaturePartialSchema.safeParse(bodyFields)
+  if (!parsed.success) {
+    res.status(400).json(errorResponse('VALIDATION', parsed.error.message))
+    return
+  }
+
+  const { classId: _c, subclassId: _s, ...updateData } = parsed.data
+  const row = await prisma.contentClassFeature.update({
+    where: { id: featureId },
+    data: updateData,
+  })
+  res.json(row)
+})
+
+// DELETE /api/classes/features/:featureId (auth)
+classesRouter.delete('/features/:featureId', requireAuth, async (req, res) => {
+  const featureId = req.params.featureId as string
+  const existing = await prisma.contentClassFeature.findUnique({ where: { id: featureId } })
+  if (!existing) {
+    res.status(404).json(errorResponse('NOT_FOUND', 'Class feature not found'))
+    return
+  }
+
+  await prisma.contentClassFeature.delete({ where: { id: featureId } })
   res.status(204).end()
 })

@@ -1,6 +1,7 @@
 export * from './shared.js'
 export * from './background.js'
 export * from './class.js'
+export * from './classFeature.js'
 export * from './classOption.js'
 export * from './condition.js'
 export * from './feat.js'
