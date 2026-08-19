@@ -90,7 +90,7 @@ describe('importJsonFile', () => {
       ],
     })
 
-    await importJsonFile({ filePath, sourceId: SOURCE_ID, jobId: job.id })
+    await importJsonFile({ filePath, sourceId: SOURCE_ID, edition: '5.5e', jobId: job.id })
 
     const finished = await prisma.importJob.findUniqueOrThrow({ where: { id: job.id } })
     const passed = finished.status === 'COMPLETED'
@@ -130,7 +130,7 @@ describe('importJsonFile', () => {
       conditions: [{ name: 'Broken Condition' }],
     })
 
-    await importJsonFile({ filePath, sourceId: SOURCE_ID, jobId: job.id })
+    await importJsonFile({ filePath, sourceId: SOURCE_ID, edition: '5.5e', jobId: job.id })
 
     const finished = await prisma.importJob.findUniqueOrThrow({ where: { id: job.id } })
     writeLog(`jsonFileImporter: partial failure → ${finished.status} [${finished.status === 'PARTIAL' ? 'PASS' : 'FAIL'}]`)

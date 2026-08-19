@@ -188,6 +188,7 @@ function parseLegendaryResistances(traits: Open5eCreatureTrait[]): number {
 export function transformMonster(
   raw: Open5eCreature,
   sourceId: string,
+  edition: string,
 ): Prisma.ContentMonsterCreateManyInput {
   const documentKey = raw.document.key
 
@@ -257,6 +258,7 @@ export function transformMonster(
     slug: logical.slug,
     sourceId: logical.sourceId,
     name: logical.name,
+    edition,
     size: logical.size,
     monsterType: logical.monsterType,
     alignment: logical.alignment,

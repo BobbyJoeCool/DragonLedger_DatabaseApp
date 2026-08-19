@@ -25,6 +25,7 @@ export const MonsterSchema = z.object({
   slug: z.string().min(1),
   sourceId: z.string().min(1),
   name: z.string().min(1),
+  edition: z.enum(["5e", "5.5e"]).optional(),
   size: z.string(),
   monsterType: z.string(),
   alignment: z.string(),

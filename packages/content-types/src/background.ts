@@ -24,6 +24,7 @@ export const BackgroundSchema = z.object({
   slug: z.string().min(1),
   sourceId: z.string().min(1),
   name: z.string().min(1),
+  edition: z.enum(["5e", "5.5e"]).optional(),
   proficiencies: proficienciesGrantSchema,
   abilityBonuses: abilityBonusGrantSchema,
   feature: z.array(featureSchema),

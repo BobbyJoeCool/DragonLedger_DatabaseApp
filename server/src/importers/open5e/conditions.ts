@@ -7,6 +7,7 @@ import type { Open5eCondition } from './types.js'
 export function transformCondition(
   raw: Open5eCondition,
   sourceId: string,
+  edition: string,
 ): Prisma.ContentConditionCreateManyInput {
   const documentKey = raw.document.key
   const match = raw.descriptions.find((d) => d.document === documentKey)
@@ -34,6 +35,7 @@ export function transformCondition(
     slug: logical.slug,
     sourceId: logical.sourceId,
     name: logical.name,
+    edition,
     description: logical.description,
     effects: logical.effects ?? null,
     extraData: toJsonString(logical.extraData),

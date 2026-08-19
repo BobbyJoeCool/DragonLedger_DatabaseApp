@@ -3,7 +3,7 @@ import { RaceSchema, SubraceSchema, type RaceTrait } from '@dragonledger/content
 import { slugify } from '../../utils/slugify.js'
 import { toJsonString } from '../utils/json.js'
 import { extractCitation } from './citation.js'
-import { parseNameTags } from './nameTags.js'
+import { editionFromTag, parseNameTags } from './nameTags.js'
 import { resolveCompendiumSource, type ResolvedCompendiumSource } from './sourceBooks.js'
 import type { CompendiumRace, CompendiumRaceTrait } from './types.js'
 
@@ -97,6 +97,7 @@ interface CommonFields {
   tags: ReturnType<typeof parseNameTags>
   citation: ReturnType<typeof extractCitation>
   source: ResolvedCompendiumSource
+  edition: '5e' | '5.5e'
   traits: RaceTrait[]
   extraData: Record<string, unknown>
   size: string[]
@@ -112,7 +113,7 @@ function buildCommonFields(raw: CompendiumRace): CommonFields {
   const source = resolveCompendiumSource(citation.book)
 
   const extraData: Record<string, unknown> = {}
-  if (tags.edition) extraData.edition = tags.edition
+  const edition = editionFromTag(tags.edition)
   if (tags.homebrew) extraData.homebrew = true
   if (tags.thirdParty) extraData.thirdParty = true
   if (tags.unearthedArcana) extraData.unearthedArcana = true
@@ -135,6 +136,7 @@ function buildCommonFields(raw: CompendiumRace): CommonFields {
     tags,
     citation,
     source,
+    edition,
     traits,
     extraData,
     size: parseSize(raw.size),
@@ -203,6 +205,7 @@ export function transformCompendiumRace(raw: CompendiumRace): CompendiumRaceResu
         slug: logical.slug,
         sourceId: logical.sourceId,
         name: logical.name,
+        edition: common.edition,
         size: toJsonString(logical.size) as string,
         speed: toJsonString(logical.speed) as string,
         traits: toJsonString(logical.traits) as string,
@@ -259,6 +262,7 @@ export function transformCompendiumRace(raw: CompendiumRace): CompendiumRaceResu
         sourceId: logical.sourceId,
         raceId: logical.raceId ?? null,
         name: logical.name,
+        edition: common.edition,
         description: logical.description ?? null,
         size: toJsonString(logical.size),
         speed: toJsonString(logical.speed),

@@ -48,3 +48,7 @@ export function parseNameTags(rawName: string): ParsedNameTags {
 
   return { name, edition, homebrew, thirdParty, unearthedArcana, otherTags }
 }
+
+export function editionFromTag(tag: '2014' | '2024' | null): '5e' | '5.5e' {
+  return tag === '2014' ? '5e' : '5.5e'
+}

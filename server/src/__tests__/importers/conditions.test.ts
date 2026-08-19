@@ -6,7 +6,7 @@ import { loadFixtureResult } from './fixtures.js'
 describe('transformCondition', () => {
   it('maps a real Open5e condition record with a matching description', () => {
     const raw = loadFixtureResult<Open5eCondition>('cond_core.json')
-    const row = transformCondition(raw, 'test-source')
+    const row = transformCondition(raw, 'test-source', '5.5e')
 
     expect(row.sourceId).toBe('test-source')
     expect(row.slug).toBe(raw.key)
@@ -23,7 +23,7 @@ describe('transformCondition', () => {
       icon: null,
       descriptions: [{ desc: 'Fallback text', document: 'core', gamesystem: '5e-2014' }],
     }
-    const row = transformCondition(raw, 'test-source')
+    const row = transformCondition(raw, 'test-source', '5.5e')
 
     expect(row.description).toBe('Fallback text')
     const extra = JSON.parse(row.extraData!)

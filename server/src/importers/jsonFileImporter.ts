@@ -74,37 +74,37 @@ const TYPE_CONFIG: Record<JsonContentType, TypeConfig> = {
     schema: SpellSchema,
     delegate: prisma.contentSpell,
     jsonFields: ['classes', 'extraData'],
-    columnCount: 17,
+    columnCount: 18,
   },
   class: {
     schema: ClassSchema,
     delegate: prisma.contentClass,
     jsonFields: ['primaryAbility', 'savingThrows', 'armorProfs', 'weaponProfs', 'skillChoices', 'extraData'],
-    columnCount: 13,
+    columnCount: 14,
   },
   race: {
     schema: RaceSchema,
     delegate: prisma.contentRace,
     jsonFields: ['size', 'speed', 'traits', 'extraData'],
-    columnCount: 9,
+    columnCount: 10,
   },
   background: {
     schema: BackgroundSchema,
     delegate: prisma.contentBackground,
     jsonFields: ['proficiencies', 'abilityBonuses', 'feature', 'extraData'],
-    columnCount: 9,
+    columnCount: 10,
   },
   condition: {
     schema: ConditionSchema,
     delegate: prisma.contentCondition,
     jsonFields: ['extraData'],
-    columnCount: 7,
+    columnCount: 8,
   },
   item: {
     schema: ItemSchema,
     delegate: prisma.contentItem,
     jsonFields: ['properties', 'extraData'],
-    columnCount: 14,
+    columnCount: 15,
   },
   monster: {
     schema: MonsterSchema,
@@ -122,13 +122,13 @@ const TYPE_CONFIG: Record<JsonContentType, TypeConfig> = {
       'legendaryActions',
       'extraData',
     ],
-    columnCount: 26,
+    columnCount: 27,
   },
   feat: {
     schema: FeatSchema,
     delegate: prisma.contentFeat,
     jsonFields: ['extraData'],
-    columnCount: 8,
+    columnCount: 9,
   },
 }
 
@@ -196,6 +196,7 @@ function buildRow(
   raw: unknown,
   config: TypeConfig,
   sourceId: string,
+  edition: '5e' | '5.5e',
 ): { data: Record<string, unknown> } | { error: string } {
   if (raw === null || typeof raw !== 'object') {
     return { error: 'entry is not an object' }
@@ -241,7 +242,7 @@ function buildRow(
     return { error: message }
   }
 
-  return { data: serializeJsonFields(parsed.data as Record<string, unknown>, config.jsonFields) }
+  return { data: { ...serializeJsonFields(parsed.data as Record<string, unknown>, config.jsonFields), edition } }
 }
 
 function chunk<T>(items: T[], size: number): T[][] {
@@ -253,6 +254,7 @@ function chunk<T>(items: T[], size: number): T[][] {
 export interface ImportJsonFileOptions {
   filePath: string
   sourceId: string
+  edition: '5e' | '5.5e'
   jobId: string
 }
 
@@ -263,7 +265,7 @@ export interface ImportJsonFileOptions {
 // running the same file twice) surfaces as that section's error, same
 // granularity as every other per-content-type failure here.
 export async function importJsonFile(options: ImportJsonFileOptions): Promise<void> {
-  const { filePath, sourceId, jobId } = options
+  const { filePath, sourceId, edition, jobId } = options
 
   const raw = await readFile(filePath, 'utf-8')
   const parsed: unknown = JSON.parse(raw)
@@ -288,7 +290,7 @@ export async function importJsonFile(options: ImportJsonFileOptions): Promise<vo
       const rows: Record<string, unknown>[] = []
       const entryErrors: string[] = []
       section.entries.forEach((entry, index) => {
-        const result = buildRow(entry, config, sourceId)
+        const result = buildRow(entry, config, sourceId, edition)
         if ('error' in result) {
           entryErrors.push(`entry ${index}: ${result.error}`)
         } else {

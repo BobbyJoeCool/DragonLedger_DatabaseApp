@@ -61,6 +61,7 @@ function toScalingEntries(
 export function transformSpell(
   raw: Open5eSpell,
   sourceId: string,
+  edition: string,
 ): Prisma.ContentSpellCreateManyInput {
   const documentKey = raw.document.key
 
@@ -103,6 +104,7 @@ export function transformSpell(
     slug: logical.slug,
     sourceId: logical.sourceId,
     name: logical.name,
+    edition,
     level: logical.level,
     school: logical.school,
     castingTime: logical.castingTime,

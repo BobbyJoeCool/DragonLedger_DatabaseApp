@@ -4,7 +4,7 @@ import { scalingTriggerForSpellLevel, type SpellScalingEntry } from '../shared/s
 import { slugify } from '../../utils/slugify.js'
 import { toJsonString } from '../utils/json.js'
 import { extractCitation } from './citation.js'
-import { parseNameTags } from './nameTags.js'
+import { editionFromTag, parseNameTags } from './nameTags.js'
 import { resolveCompendiumSource, type ResolvedCompendiumSource } from './sourceBooks.js'
 import type { CompendiumSpell } from './types.js'
 
@@ -91,7 +91,7 @@ export function transformSpellOrManeuver(raw: CompendiumSpell): SpellOrManeuver 
   const source = resolveCompendiumSource(citation.book)
 
   const extraData: Record<string, unknown> = {}
-  if (tags.edition) extraData.edition = tags.edition
+  const edition = editionFromTag(tags.edition)
   if (tags.homebrew) extraData.homebrew = true
   if (tags.thirdParty) extraData.thirdParty = true
   if (tags.unearthedArcana) extraData.unearthedArcana = true
@@ -124,6 +124,7 @@ export function transformSpellOrManeuver(raw: CompendiumSpell): SpellOrManeuver 
         classId: null,
         pool: logical.pool,
         name: logical.name,
+        edition,
         description: logical.description,
         prerequisite: null,
         extraData: toJsonString(logical.extraData),
@@ -188,6 +189,7 @@ export function transformSpellOrManeuver(raw: CompendiumSpell): SpellOrManeuver 
       slug: logical.slug,
       sourceId: logical.sourceId,
       name: logical.name,
+      edition,
       level: logical.level,
       school: logical.school,
       castingTime: logical.castingTime,

@@ -6,7 +6,7 @@ import { slugify } from '../../utils/slugify.js'
 import type { ExplodedClassFeature } from '../shared/classFeature.js'
 import { toJsonString } from '../utils/json.js'
 import { extractCitation } from './citation.js'
-import { parseNameTags } from './nameTags.js'
+import { editionFromTag, parseNameTags } from './nameTags.js'
 import { resolveCompendiumSource, type ResolvedCompendiumSource } from './sourceBooks.js'
 import type { CompendiumAutolevelFeature, CompendiumClass } from './types.js'
 import type { TransformedRecord } from './feats.js'
@@ -189,7 +189,7 @@ export function transformCompendiumClass(raw: CompendiumClass): TransformedClass
 
   const extraData: Record<string, unknown> = {}
   if (casterType) extraData.casterType = casterType
-  if (tags.edition) extraData.edition = tags.edition
+  const edition = editionFromTag(tags.edition)
   if (tags.homebrew) extraData.homebrew = true
   if (tags.thirdParty) extraData.thirdParty = true
   if (tags.unearthedArcana) extraData.unearthedArcana = true
@@ -222,6 +222,7 @@ export function transformCompendiumClass(raw: CompendiumClass): TransformedClass
       slug: logical.slug,
       sourceId: logical.sourceId,
       name: logical.name,
+      edition,
       hitDie: logical.hitDie,
       primaryAbility: toJsonString(logical.primaryAbility) as string,
       savingThrows: toJsonString(logical.savingThrows) as string,
@@ -249,7 +250,7 @@ export function transformCompendiumClass(raw: CompendiumClass): TransformedClass
     const subSource = resolveCompendiumSource(markerCitation.book)
 
     const subExtraData: Record<string, unknown> = {}
-    if (subTags.edition) subExtraData.edition = subTags.edition
+    const subEdition = editionFromTag(subTags.edition)
     if (subTags.homebrew) subExtraData.homebrew = true
     if (subTags.thirdParty) subExtraData.thirdParty = true
     if (subTags.unearthedArcana) subExtraData.unearthedArcana = true
@@ -270,6 +271,7 @@ export function transformCompendiumClass(raw: CompendiumClass): TransformedClass
         slug: subLogical.slug,
         sourceId: subLogical.sourceId,
         name: subLogical.name,
+        edition: subEdition,
         description: subLogical.description,
         extraData: toJsonString(subLogical.extraData),
       },

@@ -6,7 +6,7 @@ import { loadFixtureResult } from './fixtures.js'
 describe('transformSpell', () => {
   it('maps a real Fireball record correctly', () => {
     const raw = loadFixtureResult<Open5eSpell>('fireball2.json')
-    const row = transformSpell(raw, 'test-source')
+    const row = transformSpell(raw, 'test-source', '5.5e')
 
     expect(row.slug).toBe('fireball')
     expect(row.level).toBe(3)
@@ -27,7 +27,7 @@ describe('transformSpell', () => {
   it('writes extraData.scaling in the unified shape, trigger decided from spell.level (Phase 2.6)', () => {
     const raw = loadFixtureResult<Open5eSpell>('fireball2.json')
     expect(raw.level).toBe(3) // non-cantrip → slot_level trigger, not character_level
-    const row = transformSpell(raw, 'test-source')
+    const row = transformSpell(raw, 'test-source', '5.5e')
 
     const extra = JSON.parse(row.extraData!)
     expect(extra.castingOptions).toBeUndefined() // renamed away, not left alongside

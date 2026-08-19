@@ -137,7 +137,7 @@ export interface TransformedSubclass {
   features: ExplodedClassFeature[]
 }
 
-export function transformClass(raw: Open5eClass, sourceId: string): TransformedClass {
+export function transformClass(raw: Open5eClass, sourceId: string, edition: string): TransformedClass {
   const documentKey = raw.document.key
   const coreTraits = parseCoreTraitsTable(raw.features)
 
@@ -184,6 +184,7 @@ export function transformClass(raw: Open5eClass, sourceId: string): TransformedC
       slug: logical.slug,
       sourceId: logical.sourceId,
       name: logical.name,
+      edition,
       hitDie: logical.hitDie,
       primaryAbility: toJsonString(logical.primaryAbility) as string,
       savingThrows: toJsonString(logical.savingThrows) as string,
@@ -202,6 +203,7 @@ export function transformSubclass(
   raw: Open5eClass,
   classId: string | null,
   sourceId: string,
+  edition: string,
 ): TransformedSubclass {
   const documentKey = raw.document.key
 
@@ -220,6 +222,7 @@ export function transformSubclass(
       sourceId: logical.sourceId,
       classId: logical.classId ?? null,
       name: logical.name,
+      edition,
       description: logical.description,
       extraData: toJsonString(logical.extraData),
     },

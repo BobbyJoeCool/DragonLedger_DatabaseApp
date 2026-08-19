@@ -36,14 +36,14 @@ describe('transformCompendiumClass', () => {
     expect(warDomain.parentClassName).toBe('Cleric')
   })
 
-  it('tags a (Legacy) subclass variant as 2014 edition, distinct from the untagged 2024 version', () => {
+  it('tags a (Legacy) subclass variant as 5e edition, distinct from the untagged 5.5e version', () => {
     const raw = compendiumFixture<CompendiumClass>('cleric')
     const { subclasses } = transformCompendiumClass(raw)
 
     const legacyKnowledge = subclasses.filter((s) => s.row.name === 'Knowledge Domain')
     expect(legacyKnowledge.length).toBeGreaterThanOrEqual(2)
-    const editions = legacyKnowledge.map((s) => JSON.parse(s.row.extraData!).edition ?? null)
-    expect(editions).toEqual(expect.arrayContaining(['2014']))
+    const editions = legacyKnowledge.map((s) => s.row.edition)
+    expect(editions).toEqual(expect.arrayContaining(['5e']))
   })
 
   it('skips a subclass marker with no name surviving tag-stripping rather than failing the whole class (real malformed data)', () => {

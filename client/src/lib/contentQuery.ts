@@ -8,12 +8,13 @@ export const PAGE_LIMIT = 50
 export interface ContentFilters {
   sourceIds: string[]
   sourceType: string
+  edition: string
   query: string
   extra: Record<string, string>
 }
 
 export function defaultFilters(): ContentFilters {
-  return { sourceIds: [], sourceType: '', query: '', extra: {} }
+  return { sourceIds: [], sourceType: '', edition: '', query: '', extra: {} }
 }
 
 export interface ContentListItem {
@@ -41,6 +42,7 @@ function baseParams(filters: ContentFilters): URLSearchParams {
   const params = new URLSearchParams()
   for (const id of filters.sourceIds) params.append('source', id)
   if (filters.sourceType) params.set('sourceType', filters.sourceType)
+  if (filters.edition) params.set('edition', filters.edition)
   if (filters.query) params.set('q', filters.query)
   for (const [key, value] of Object.entries(filters.extra)) {
     if (value) params.set(key, value)
@@ -75,7 +77,7 @@ export function allFieldsParams(filters: ContentFilters): URLSearchParams {
 // Stable key fragment shared by useContentList/useContentNameIndex — sorted
 // sourceIds so checkbox-toggle order never produces spurious cache misses.
 export function filterKey(type: ContentType, filters: ContentFilters) {
-  return [type, [...filters.sourceIds].sort(), filters.sourceType, filters.query, filters.extra] as const
+  return [type, [...filters.sourceIds].sort(), filters.sourceType, filters.edition, filters.query, filters.extra] as const
 }
 
 export function apiPath(type: ContentType): string {

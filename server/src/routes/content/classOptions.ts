@@ -28,11 +28,11 @@ const writeConfig = {
 // under Class) per the resolved Phase 3 open question — most live rows
 // currently have classId: null (general options not yet linked to a class).
 classOptionsRouter.get('/', async (req, res) => {
-  const { sourceIds, sourceType, q, page, limit, skip, fieldsName } = parseListQuery(req)
+  const { sourceIds, sourceType, edition, q, page, limit, skip, fieldsName } = parseListQuery(req)
   const { classId, pool } = req.query as Record<string, string | undefined>
 
   const where: Prisma.ContentClassOptionWhereInput = {
-    ...sourceWhere(sourceIds, sourceType),
+    ...sourceWhere(sourceIds, sourceType, edition),
     ...(q ? { name: { contains: q } } : {}),
     ...(classId ? { classId } : {}),
     ...(pool ? { pool } : {}),

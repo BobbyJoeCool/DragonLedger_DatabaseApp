@@ -11,6 +11,7 @@ export const ItemSchema = z.object({
   slug: z.string().min(1),
   sourceId: z.string().min(1),
   name: z.string().min(1),
+  edition: z.enum(["5e", "5.5e"]).optional(),
   itemType: z.string(),
   rarity: z.string().nullable().optional(),
   requiresAttunement: z.boolean(),

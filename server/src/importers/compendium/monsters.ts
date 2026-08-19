@@ -7,7 +7,7 @@ import { xpFromChallengeRating } from '../shared/experiencePoints.js'
 import { inferProficiencyBonus, parseChallengeRatingToNumber } from '../open5e/monsters.js'
 import { toJsonString } from '../utils/json.js'
 import { extractCitation } from './citation.js'
-import { parseNameTags } from './nameTags.js'
+import { editionFromTag, parseNameTags } from './nameTags.js'
 import { resolveCompendiumSource } from './sourceBooks.js'
 import type { CompendiumAction, CompendiumMonster } from './types.js'
 import type { TransformedRecord } from './feats.js'
@@ -219,7 +219,7 @@ export function transformCompendiumMonster(
       ? parseLegendaryResistances(legendaryResistanceTrait.name)
       : 0,
   }
-  if (tags.edition) extraData.edition = tags.edition
+  const edition = editionFromTag(tags.edition)
   if (tags.homebrew) extraData.homebrew = true
   if (tags.thirdParty) extraData.thirdParty = true
   if (tags.unearthedArcana) extraData.unearthedArcana = true
@@ -291,6 +291,7 @@ export function transformCompendiumMonster(
       slug: logical.slug,
       sourceId: logical.sourceId,
       name: logical.name,
+      edition,
       size: logical.size,
       monsterType: logical.monsterType,
       alignment: logical.alignment,

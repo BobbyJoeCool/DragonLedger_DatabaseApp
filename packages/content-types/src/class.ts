@@ -10,6 +10,7 @@ export const ClassSchema = z.object({
   slug: z.string().min(1),
   sourceId: z.string().min(1),
   name: z.string().min(1),
+  edition: z.enum(['5e', '5.5e']).optional(),
   hitDie: z.number().int().positive(),
   primaryAbility: primaryAbilitySchema,
   savingThrows: z.array(z.string()),
@@ -37,6 +38,7 @@ export const SubclassSchema = z.object({
   sourceId: z.string().min(1),
   classId: z.string().nullable().optional(),
   name: z.string().min(1),
+  edition: z.enum(['5e', '5.5e']).optional(),
   description: z.string(),
   extraData: z.record(z.string(), z.unknown()).nullable().optional(),
 })

@@ -21,11 +21,11 @@ const writeConfig = {
 
 // GET /api/feats — filters: category, source, q
 featsRouter.get('/', async (req, res) => {
-  const { sourceIds, sourceType, q, page, limit, skip, fieldsName, fieldsAll } = parseListQuery(req)
+  const { sourceIds, sourceType, edition, q, page, limit, skip, fieldsName, fieldsAll } = parseListQuery(req)
   const { category } = req.query as Record<string, string | undefined>
 
   const where: Prisma.ContentFeatWhereInput = {
-    ...sourceWhere(sourceIds, sourceType),
+    ...sourceWhere(sourceIds, sourceType, edition),
     ...(q ? { name: { contains: q } } : {}),
     ...(category ? { category } : {}),
   }

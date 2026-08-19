@@ -4,6 +4,7 @@ export const SpellSchema = z.object({
   slug: z.string().min(1),
   sourceId: z.string().min(1),
   name: z.string().min(1),
+  edition: z.enum(["5e", "5.5e"]).optional(),
   level: z.number().int().min(0).max(9),
   school: z.string().min(1),
   castingTime: z.string(),

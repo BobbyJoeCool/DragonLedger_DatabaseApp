@@ -10,6 +10,7 @@ export const ClassOptionSchema = z.object({
   // closed enum.
   pool: z.string().min(1),
   name: z.string().min(1),
+  edition: z.enum(["5e", "5.5e"]).optional(),
   description: z.string(),
   prerequisite: z.string().nullable().optional(),
   extraData: z.record(z.string(), z.unknown()).nullable().optional(),

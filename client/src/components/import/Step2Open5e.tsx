@@ -17,15 +17,30 @@ const CONTENT_TYPES = [
   { value: 'MONSTER', label: 'Monsters' },
 ] as const
 
+const EDITION_PRESETS = {
+  '5.5e': { sourceId: 'open5e-srd-2024', sourceName: 'Open5e SRD 2024', documentKey: 'srd-2024' },
+  '5e': { sourceId: 'open5e-srd-2014', sourceName: 'Open5e SRD 2014', documentKey: 'srd-2014' },
+} as const
+
+type Edition = '5e' | '5.5e'
+
 const inputClass = 'w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring'
 
 export function Step2Open5e({ onBack, onDone }: Step2Open5eProps) {
-  const [sourceId, setSourceId] = useState('open5e-srd-2024')
-  const [sourceName, setSourceName] = useState('Open5e SRD 2024')
+  const [edition, setEdition] = useState<Edition>('5.5e')
+  const [sourceId, setSourceId] = useState(EDITION_PRESETS['5.5e'].sourceId)
+  const [sourceName, setSourceName] = useState(EDITION_PRESETS['5.5e'].sourceName)
   const [selected, setSelected] = useState<string[]>(CONTENT_TYPES.map((t) => t.value))
   const [jobId, setJobId] = useState<string | null>(null)
   const [starting, setStarting] = useState(false)
   const [error, setError] = useState('')
+
+  function handleEditionChange(ed: Edition) {
+    setEdition(ed)
+    const preset = EDITION_PRESETS[ed]
+    setSourceId(preset.sourceId)
+    setSourceName(preset.sourceName)
+  }
 
   function toggle(value: string) {
     setSelected((prev) => (prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]))
@@ -36,7 +51,13 @@ export function Step2Open5e({ onBack, onDone }: Step2Open5eProps) {
     setError('')
     const res = await apiFetch('/api/import/open5e', {
       method: 'POST',
-      body: JSON.stringify({ sourceId, sourceName, contentTypes: selected }),
+      body: JSON.stringify({
+        sourceId,
+        sourceName,
+        documentKey: EDITION_PRESETS[edition].documentKey,
+        edition,
+        contentTypes: selected,
+      }),
     })
     // Navigate to the progress view immediately on receiving jobId, per
     // Decision 1.7 — the SSE endpoint's replay-on-connect behavior smooths
@@ -60,6 +81,27 @@ export function Step2Open5e({ onBack, onDone }: Step2Open5eProps) {
       <button type="button" onClick={onBack} className="text-sm text-muted-foreground hover:underline">
         ← Back
       </button>
+      <div>
+        <label className="mb-2 block text-sm font-medium">Edition</label>
+        <div className="inline-flex rounded-lg border p-0.5" role="radiogroup">
+          {(['5.5e', '5e'] as const).map((ed) => (
+            <button
+              key={ed}
+              type="button"
+              role="radio"
+              aria-checked={edition === ed}
+              onClick={() => handleEditionChange(ed)}
+              className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+                edition === ed
+                  ? 'bg-accent text-accent-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {ed === '5.5e' ? '5.5e (2024 SRD)' : '5e (2014 SRD)'}
+            </button>
+          ))}
+        </div>
+      </div>
       <div>
         <label className="mb-1 block text-sm font-medium">Source ID</label>
         <input value={sourceId} onChange={(e) => setSourceId(e.target.value)} className={inputClass} />

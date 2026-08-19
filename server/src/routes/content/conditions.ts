@@ -25,10 +25,10 @@ const writeConfig = {
 
 // GET /api/conditions — filters: source, q
 conditionsRouter.get('/', async (req, res) => {
-  const { sourceIds, sourceType, q, page, limit, skip, fieldsName, fieldsAll } = parseListQuery(req)
+  const { sourceIds, sourceType, edition, q, page, limit, skip, fieldsName, fieldsAll } = parseListQuery(req)
 
   const where: Prisma.ContentConditionWhereInput = {
-    ...sourceWhere(sourceIds, sourceType),
+    ...sourceWhere(sourceIds, sourceType, edition),
     ...(q ? { name: { contains: q } } : {}),
   }
 

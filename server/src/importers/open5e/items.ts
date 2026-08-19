@@ -72,6 +72,7 @@ interface MagicItemFields {
 function buildItem(
   raw: Open5eItem,
   sourceId: string,
+  edition: string,
   magic: MagicItemFields | null,
 ): Prisma.ContentItemCreateManyInput {
   const documentKey = raw.document.key
@@ -102,6 +103,7 @@ function buildItem(
     slug: logical.slug,
     sourceId: logical.sourceId,
     name: logical.name,
+    edition,
     itemType: logical.itemType,
     rarity: logical.rarity ?? null,
     requiresAttunement: logical.requiresAttunement,
@@ -118,17 +120,17 @@ function buildItem(
 export function transformItem(
   raw: Open5eItem,
   sourceId: string,
+  edition: string,
 ): Prisma.ContentItemCreateManyInput {
-  return buildItem(raw, sourceId, null)
+  return buildItem(raw, sourceId, edition, null)
 }
 
-// Magic items are imported as regular new rows, not merges/modifications
-// of an existing mundane item with the same base name.
 export function transformMagicItem(
   raw: Open5eMagicItem,
   sourceId: string,
+  edition: string,
 ): Prisma.ContentItemCreateManyInput {
-  return buildItem(raw, sourceId, {
+  return buildItem(raw, sourceId, edition, {
     rarity: raw.rarity?.key ?? null,
     requiresAttunement: raw.requires_attunement,
     attunementDetail: raw.attunement_detail,

@@ -5,7 +5,7 @@ import { parseProficiencyGrant, splitOptionList } from '../open5e/proseGrant.js'
 import { slugify } from '../../utils/slugify.js'
 import { toJsonString } from '../utils/json.js'
 import { extractCitation } from './citation.js'
-import { parseNameTags } from './nameTags.js'
+import { editionFromTag, parseNameTags } from './nameTags.js'
 import { resolveCompendiumSource } from './sourceBooks.js'
 import type { CompendiumBackground, CompendiumBackgroundTrait } from './types.js'
 import type { TransformedRecord } from './feats.js'
@@ -120,7 +120,7 @@ export function transformCompendiumBackground(
     ],
   }
 
-  if (tags.edition) extraData.edition = tags.edition
+  const edition = editionFromTag(tags.edition)
   if (tags.homebrew) extraData.homebrew = true
   if (tags.thirdParty) extraData.thirdParty = true
   if (tags.unearthedArcana) extraData.unearthedArcana = true
@@ -143,6 +143,7 @@ export function transformCompendiumBackground(
       slug: logical.slug,
       sourceId: logical.sourceId,
       name: logical.name,
+      edition,
       proficiencies: toJsonString(logical.proficiencies) as string,
       abilityBonuses: toJsonString(logical.abilityBonuses) as string,
       feature: toJsonString(logical.feature) as string,

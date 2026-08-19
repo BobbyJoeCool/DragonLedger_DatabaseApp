@@ -42,10 +42,10 @@ const writeConfig = {
 
 // GET /api/classes — filters: source, q
 classesRouter.get('/', async (req, res) => {
-  const { sourceIds, sourceType, q, page, limit, skip, fieldsName, fieldsAll } = parseListQuery(req)
+  const { sourceIds, sourceType, edition, q, page, limit, skip, fieldsName, fieldsAll } = parseListQuery(req)
 
   const where: Prisma.ContentClassWhereInput = {
-    ...sourceWhere(sourceIds, sourceType),
+    ...sourceWhere(sourceIds, sourceType, edition),
     ...(q ? { name: { contains: q } } : {}),
   }
 
@@ -207,7 +207,7 @@ classesRouter.patch('/features/:featureId', requireAuth, async (req, res) => {
 
   if (clientUpdatedAt != null) {
     const clientDate = new Date(clientUpdatedAt as string).getTime()
-    const dbDate = new Date(existing.updatedAt as string).getTime()
+    const dbDate = new Date(existing.updatedAt as unknown as string).getTime()
     if (clientDate !== dbDate) {
       res.status(409).json(errorResponse('CONFLICT', 'Class feature was modified since you last loaded it', {
         serverUpdatedAt: existing.updatedAt,

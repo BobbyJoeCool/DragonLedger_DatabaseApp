@@ -140,6 +140,7 @@ describe('importSource orchestrator', () => {
     await importSource({
       sourceId: SOURCE_ID,
       sourceName: 'Test Source',
+      edition: '5.5e',
       contentTypes: ['CLASS'],
       jobId,
     })
@@ -171,6 +172,7 @@ describe('importSource orchestrator', () => {
     await importSource({
       sourceId: SOURCE_ID,
       sourceName: 'Test Source',
+      edition: '5.5e',
       contentTypes: ['CONDITION', 'SPELL'],
       jobId,
     })
@@ -202,6 +204,7 @@ describe('importSource orchestrator', () => {
     await importSource({
       sourceId: SOURCE_ID,
       sourceName: 'Test Source',
+      edition: '5.5e',
       contentTypes: ['CONDITION', 'SPELL'],
       jobId,
     })
@@ -233,6 +236,7 @@ describe('importSource orchestrator', () => {
     await importSource({
       sourceId: SOURCE_ID,
       sourceName: 'Test Source',
+      edition: '5.5e',
       contentTypes: ['CONDITION', 'SPELL'],
       jobId,
     })

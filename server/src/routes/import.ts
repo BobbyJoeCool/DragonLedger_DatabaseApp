@@ -5,7 +5,7 @@ import { prisma } from '../db/client.js'
 import { importCompendium, type DuplicateDecision } from '../importers/compendiumOrchestrator.js'
 import { importEvents, type ImportProgressEvent } from '../importers/importEvents.js'
 import { extractSections, importJsonFile } from '../importers/jsonFileImporter.js'
-import { importSource, type Open5eContentType } from '../importers/orchestrator.js'
+import { importSource, type Edition, type Open5eContentType } from '../importers/orchestrator.js'
 import { requireAuth } from '../middleware/auth.js'
 
 export const importRouter = Router()
@@ -24,11 +24,12 @@ const VALID_CONTENT_TYPES: Open5eContentType[] = [
 // immediately with a jobId; progress is tracked via the DB-backed
 // ImportJob row and streamed over GET /api/import/progress/:jobId.
 importRouter.post('/open5e', requireAuth, async (req, res) => {
-  const { sourceId, sourceName, contentTypes, documentKey } = req.body as {
+  const { sourceId, sourceName, contentTypes, documentKey, edition: rawEdition } = req.body as {
     sourceId?: unknown
     sourceName?: unknown
     contentTypes?: unknown
     documentKey?: unknown
+    edition?: unknown
   }
 
   if (typeof sourceId !== 'string' || sourceId.trim().length === 0) {
@@ -52,6 +53,13 @@ importRouter.post('/open5e', requireAuth, async (req, res) => {
     res.status(400).json({ error: '`documentKey` must be a string' })
     return
   }
+  if (rawEdition !== undefined && rawEdition !== '5e' && rawEdition !== '5.5e') {
+    res.status(400).json({ error: '`edition` must be "5e" or "5.5e"' })
+    return
+  }
+
+  const edition: Edition =
+    rawEdition ?? (documentKey === 'srd-2014' ? '5e' : '5.5e')
 
   // ImportJob.sourceId is a required FK — the Source row must exist first,
   // which matters for a brand-new sourceId (the orchestrator's own upsert
@@ -87,6 +95,7 @@ importRouter.post('/open5e', requireAuth, async (req, res) => {
     sourceId,
     sourceName,
     documentKey: documentKey as string | undefined,
+    edition,
     contentTypes: contentTypes as Open5eContentType[],
     jobId: job.id,
   }).catch(async (err) => {
@@ -288,10 +297,11 @@ importRouter.post('/compendium/:jobId/resume', requireAuth, async (req, res) => 
 // on the same machine as the server process). No content-type selection: the
 // file's own structure determines what's imported (Decision 1.2).
 importRouter.post('/file', requireAuth, async (req, res) => {
-  const { sourceId, sourceName, filePath } = req.body as {
+  const { sourceId, sourceName, filePath, edition: rawFileEdition } = req.body as {
     sourceId?: unknown
     sourceName?: unknown
     filePath?: unknown
+    edition?: unknown
   }
 
   if (typeof sourceId !== 'string' || sourceId.trim().length === 0) {
@@ -310,6 +320,12 @@ importRouter.post('/file', requireAuth, async (req, res) => {
     res.status(400).json({ error: `File not found: ${filePath}` })
     return
   }
+  if (rawFileEdition !== undefined && rawFileEdition !== '5e' && rawFileEdition !== '5.5e') {
+    res.status(400).json({ error: '`edition` must be "5e" or "5.5e"' })
+    return
+  }
+
+  const fileEdition: Edition = (rawFileEdition as Edition | undefined) ?? '5.5e'
 
   let sectionTypes: string[]
   try {
@@ -348,7 +364,7 @@ importRouter.post('/file', requireAuth, async (req, res) => {
 
   res.status(202).json({ jobId: job.id })
 
-  importJsonFile({ filePath, sourceId, jobId: job.id }).catch(async (err) => {
+  importJsonFile({ filePath, sourceId, edition: fileEdition, jobId: job.id }).catch(async (err) => {
     await prisma.importJob.update({
       where: { id: job.id },
       data: {

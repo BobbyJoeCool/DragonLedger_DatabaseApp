@@ -55,16 +55,16 @@ const CONTENT_TYPE_ORDER: Open5eContentType[] = [
 // createMany batch's bound-parameter count safely under SQLite's ~999
 // per-query ceiling (see utils/chunkSize.ts).
 const COLUMN_COUNTS: Record<Open5eContentType, number> = {
-  CONDITION: 7,
-  SPELL: 17,
-  RACE: 9,
-  CLASS: 13,
-  BACKGROUND: 9,
-  ITEM: 14,
-  MONSTER: 26, // +1 for experiencePoints (Phase 2.6)
+  CONDITION: 8,
+  SPELL: 18,
+  RACE: 10,
+  CLASS: 14,
+  BACKGROUND: 10,
+  ITEM: 15,
+  MONSTER: 27,
 }
-const SUBRACE_COLUMN_COUNT = 10
-const SUBCLASS_COLUMN_COUNT = 7
+const SUBRACE_COLUMN_COUNT = 11
+const SUBCLASS_COLUMN_COUNT = 8
 const CLASS_FEATURE_COLUMN_COUNT = 7 // id, classId, subclassId, level, name, description, type — Phase 2.6
 
 function chunk<T>(items: T[], size: number): T[][] {
@@ -83,11 +83,11 @@ interface ImportResult {
   warnings?: string[]
 }
 
-async function importConditions(sourceId: string, documentKey: string): Promise<ImportResult> {
+async function importConditions(sourceId: string, documentKey: string, edition: Edition): Promise<ImportResult> {
   const raw = await fetchAllPages<Open5eCondition>(
     `${OPEN5E_BASE}/conditions/?document__key__in=${documentKey}&limit=100`,
   )
-  const rows = raw.map((r) => transformCondition(r, sourceId))
+  const rows = raw.map((r) => transformCondition(r, sourceId, edition))
   const chunkSize = computeChunkSize(COLUMN_COUNTS.CONDITION)
 
   await prisma.$transaction(async (tx) => {
@@ -100,11 +100,11 @@ async function importConditions(sourceId: string, documentKey: string): Promise<
   return { count: rows.length }
 }
 
-async function importSpells(sourceId: string, documentKey: string): Promise<ImportResult> {
+async function importSpells(sourceId: string, documentKey: string, edition: Edition): Promise<ImportResult> {
   const raw = await fetchAllPages<Open5eSpell>(
     `${OPEN5E_BASE}/spells/?document__key__in=${documentKey}&limit=100`,
   )
-  const rows = raw.map((r) => transformSpell(r, sourceId))
+  const rows = raw.map((r) => transformSpell(r, sourceId, edition))
   const chunkSize = computeChunkSize(COLUMN_COUNTS.SPELL)
 
   await prisma.$transaction(async (tx) => {
@@ -117,14 +117,14 @@ async function importSpells(sourceId: string, documentKey: string): Promise<Impo
   return { count: rows.length }
 }
 
-async function importRaces(sourceId: string, documentKey: string): Promise<ImportResult> {
+async function importRaces(sourceId: string, documentKey: string, edition: Edition): Promise<ImportResult> {
   const raw = await fetchAllPages<Open5eSpecies>(
     `${OPEN5E_BASE}/species/?document__key__in=${documentKey}&limit=100`,
   )
   const baseRaces = raw.filter((r) => !r.is_subspecies)
   const subspeciesRecords = raw.filter((r) => r.is_subspecies)
 
-  const raceRows = baseRaces.map((r) => transformRace(r, sourceId))
+  const raceRows = baseRaces.map((r) => transformRace(r, sourceId, edition))
   const raceChunkSize = computeChunkSize(COLUMN_COUNTS.RACE)
   const subraceChunkSize = computeChunkSize(SUBRACE_COLUMN_COUNT)
 
@@ -156,7 +156,7 @@ async function importRaces(sourceId: string, documentKey: string): Promise<Impor
     for (const base of baseRaces) {
       const raceId = idBySlug.get(slugFromKey(base.key, base.document.key))
       if (!raceId) continue
-      subraceRows.push(...synthesizeSubracesFromLineageTrait(raceId, base, sourceId))
+      subraceRows.push(...synthesizeSubracesFromLineageTrait(raceId, base, sourceId, edition))
     }
 
     for (const sub of subspeciesRecords) {
@@ -165,7 +165,7 @@ async function importRaces(sourceId: string, documentKey: string): Promise<Impor
         idBySlug.get(slugFromKey(sub.subspecies_of, sub.document.key)) ??
         idByName.get(sub.subspecies_of)
       if (!parentId) continue
-      subraceRows.push(transformSubspecies(sub, parentId, sourceId))
+      subraceRows.push(transformSubspecies(sub, parentId, sourceId, edition))
     }
 
     for (const batch of chunk(subraceRows, subraceChunkSize)) {
@@ -177,14 +177,14 @@ async function importRaces(sourceId: string, documentKey: string): Promise<Impor
   return { count: total, warnings }
 }
 
-async function importClasses(sourceId: string, documentKey: string): Promise<ImportResult> {
+async function importClasses(sourceId: string, documentKey: string, edition: Edition): Promise<ImportResult> {
   const raw = await fetchAllPages<Open5eClass>(
     `${OPEN5E_BASE}/classes/?document__key__in=${documentKey}&limit=100`,
   )
   const baseClasses = raw.filter((c) => !c.subclass_of)
   const subclassRecords = raw.filter((c) => c.subclass_of)
 
-  const classResults = baseClasses.map((c) => transformClass(c, sourceId))
+  const classResults = baseClasses.map((c) => transformClass(c, sourceId, edition))
   const classChunkSize = computeChunkSize(COLUMN_COUNTS.CLASS)
   const subclassChunkSize = computeChunkSize(SUBCLASS_COLUMN_COUNT)
   const featureChunkSize = computeChunkSize(CLASS_FEATURE_COLUMN_COUNT)
@@ -231,7 +231,7 @@ async function importClasses(sourceId: string, documentKey: string): Promise<Imp
       const classId = sub.subclass_of
         ? (classIdBySlug.get(slugFromKey(sub.subclass_of.key, sub.document.key)) ?? null)
         : null
-      return transformSubclass(sub, classId, sourceId)
+      return transformSubclass(sub, classId, sourceId, edition)
     })
 
     for (const batch of chunk(
@@ -265,11 +265,11 @@ async function importClasses(sourceId: string, documentKey: string): Promise<Imp
   return { count: total, warnings }
 }
 
-async function importBackgrounds(sourceId: string, documentKey: string): Promise<ImportResult> {
+async function importBackgrounds(sourceId: string, documentKey: string, edition: Edition): Promise<ImportResult> {
   const raw = await fetchAllPages<Open5eBackground>(
     `${OPEN5E_BASE}/backgrounds/?document__key__in=${documentKey}&limit=100`,
   )
-  const rows = raw.map((r) => transformBackground(r, sourceId))
+  const rows = raw.map((r) => transformBackground(r, sourceId, edition))
   const chunkSize = computeChunkSize(COLUMN_COUNTS.BACKGROUND)
 
   await prisma.$transaction(async (tx) => {
@@ -282,7 +282,7 @@ async function importBackgrounds(sourceId: string, documentKey: string): Promise
   return { count: rows.length }
 }
 
-async function importItems(sourceId: string, documentKey: string): Promise<ImportResult> {
+async function importItems(sourceId: string, documentKey: string, edition: Edition): Promise<ImportResult> {
   const [mundane, magic] = await Promise.all([
     fetchAllPages<Open5eItem>(`${OPEN5E_BASE}/items/?document__key__in=${documentKey}&limit=100`),
     fetchAllPages<Open5eMagicItem>(
@@ -290,8 +290,8 @@ async function importItems(sourceId: string, documentKey: string): Promise<Impor
     ),
   ])
   const rows = [
-    ...mundane.map((r) => transformItem(r, sourceId)),
-    ...magic.map((r) => transformMagicItem(r, sourceId)),
+    ...mundane.map((r) => transformItem(r, sourceId, edition)),
+    ...magic.map((r) => transformMagicItem(r, sourceId, edition)),
   ]
   const chunkSize = computeChunkSize(COLUMN_COUNTS.ITEM)
 
@@ -305,11 +305,11 @@ async function importItems(sourceId: string, documentKey: string): Promise<Impor
   return { count: rows.length }
 }
 
-async function importMonsters(sourceId: string, documentKey: string): Promise<ImportResult> {
+async function importMonsters(sourceId: string, documentKey: string, edition: Edition): Promise<ImportResult> {
   const raw = await fetchAllPages<Open5eCreature>(
     `${OPEN5E_BASE}/creatures/?document__key__in=${documentKey}&limit=100`,
   )
-  const rows = raw.map((r) => transformMonster(r, sourceId))
+  const rows = raw.map((r) => transformMonster(r, sourceId, edition))
   const chunkSize = computeChunkSize(COLUMN_COUNTS.MONSTER)
 
   await prisma.$transaction(async (tx) => {
@@ -326,24 +326,27 @@ async function importContentType(
   type: Open5eContentType,
   sourceId: string,
   documentKey: string,
+  edition: Edition,
 ): Promise<ImportResult> {
   switch (type) {
     case 'CONDITION':
-      return importConditions(sourceId, documentKey)
+      return importConditions(sourceId, documentKey, edition)
     case 'SPELL':
-      return importSpells(sourceId, documentKey)
+      return importSpells(sourceId, documentKey, edition)
     case 'RACE':
-      return importRaces(sourceId, documentKey)
+      return importRaces(sourceId, documentKey, edition)
     case 'CLASS':
-      return importClasses(sourceId, documentKey)
+      return importClasses(sourceId, documentKey, edition)
     case 'BACKGROUND':
-      return importBackgrounds(sourceId, documentKey)
+      return importBackgrounds(sourceId, documentKey, edition)
     case 'ITEM':
-      return importItems(sourceId, documentKey)
+      return importItems(sourceId, documentKey, edition)
     case 'MONSTER':
-      return importMonsters(sourceId, documentKey)
+      return importMonsters(sourceId, documentKey, edition)
   }
 }
+
+export type Edition = '5e' | '5.5e'
 
 export interface ImportSourceOptions {
   sourceId: string
@@ -354,6 +357,7 @@ export interface ImportSourceOptions {
   // vs. Open5e's "srd-2024"), so callers that want that separation pass
   // documentKey explicitly; simple callers can let it default.
   documentKey?: string
+  edition: Edition
   contentTypes: Open5eContentType[]
   jobId: string
 }
@@ -364,7 +368,7 @@ export interface ImportSourceOptions {
 // touches another type's already-imported data), 3. update ImportJob
 // progress/status per type, 4. update Source.lastUpdated on completion.
 export async function importSource(options: ImportSourceOptions): Promise<void> {
-  const { sourceId, sourceName, jobId } = options
+  const { sourceId, sourceName, edition, jobId } = options
   const documentKey = options.documentKey ?? sourceId
   const contentTypes = CONTENT_TYPE_ORDER.filter((t) => options.contentTypes.includes(t))
 
@@ -392,7 +396,7 @@ export async function importSource(options: ImportSourceOptions): Promise<void> 
   for (const type of contentTypes) {
     importEvents.emitProgress(jobId, { type, status: 'running' })
     try {
-      const result = await importContentType(type, sourceId, documentKey)
+      const result = await importContentType(type, sourceId, documentKey, edition)
       processedItems += 1
       warnings.push(...(result.warnings ?? []))
       importEvents.emitProgress(jobId, { type, status: 'done', count: result.count })

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '@/api/client'
+import { EditionToggle } from '@/components/browse/EditionToggle'
 import { ResultsTable } from '@/components/browse/ResultsTable'
 import { BulkActionBar } from '@/components/browse/BulkActionBar'
 import { DetailPopup } from '@/components/browse/DetailPopup'
@@ -145,6 +146,10 @@ export function BrowseScreen() {
             )}
           </div>
         </div>
+        <EditionToggle
+          value={filters.edition}
+          onChange={(edition) => updateFilters({ ...filters, edition })}
+        />
         <FilterBar filters={filters} onChange={updateFilters} />
         <ResultsTable type={activeType} filters={filters} selection={selection} onItemClick={setDetailId} />
         <BulkActionBar

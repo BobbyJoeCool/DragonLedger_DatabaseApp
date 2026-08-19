@@ -6,7 +6,7 @@ import { loadFixtureResult } from './fixtures.js'
 describe('transformItem', () => {
   it('composes weapon damage and maps the nested property.name shape correctly', () => {
     const raw = loadFixtureResult<Open5eItem>('longsword.json')
-    const row = transformItem(raw, 'test-source')
+    const row = transformItem(raw, 'test-source', '5.5e')
 
     expect(row.damage).toBe('1d8 slashing')
     const properties = JSON.parse(row.properties!)
@@ -19,7 +19,7 @@ describe('transformItem', () => {
 
   it('maps armor fields and overrides itemType with the more specific armor category', () => {
     const raw = loadFixtureResult<Open5eItem>('chainmail.json')
-    const row = transformItem(raw, 'test-source')
+    const row = transformItem(raw, 'test-source', '5.5e')
 
     expect(row.armorClass).toBe('16')
     expect(row.itemType).toBe('heavy')
@@ -32,7 +32,7 @@ describe('transformItem', () => {
 describe('transformMagicItem', () => {
   it('maps rarity and attunement as new rows, not merges of a mundane item', () => {
     const raw = loadFixtureResult<Open5eMagicItem>('magicitem.json')
-    const row = transformMagicItem(raw, 'test-source')
+    const row = transformMagicItem(raw, 'test-source', '5.5e')
 
     expect(row.rarity).toBe('uncommon')
     expect(row.requiresAttunement).toBe(false)

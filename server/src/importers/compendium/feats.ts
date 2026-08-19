@@ -3,7 +3,7 @@ import { FeatSchema } from '@dragonledger/content-types'
 import { slugify } from '../../utils/slugify.js'
 import { toJsonString } from '../utils/json.js'
 import { extractCitation } from './citation.js'
-import { parseNameTags } from './nameTags.js'
+import { editionFromTag, parseNameTags } from './nameTags.js'
 import { resolveCompendiumSource, type ResolvedCompendiumSource } from './sourceBooks.js'
 import type { CompendiumFeat } from './types.js'
 
@@ -48,7 +48,7 @@ export function transformFeat(
   const source = resolveCompendiumSource(citation.book)
 
   const extraData: Record<string, unknown> = {}
-  if (tags.edition) extraData.edition = tags.edition
+  const edition = editionFromTag(tags.edition)
   if (tags.homebrew) extraData.homebrew = true
   if (tags.thirdParty) extraData.thirdParty = true
   if (tags.unearthedArcana) extraData.unearthedArcana = true
@@ -78,6 +78,7 @@ export function transformFeat(
       slug: logical.slug,
       sourceId: logical.sourceId,
       name: logical.name,
+      edition,
       category: logical.category,
       prerequisite: logical.prerequisite ?? null,
       description: logical.description,

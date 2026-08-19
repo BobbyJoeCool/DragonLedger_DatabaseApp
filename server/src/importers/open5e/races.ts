@@ -167,6 +167,7 @@ const LINEAGE_PARSERS: Record<string, LineageParser> = {
 export function transformRace(
   raw: Open5eSpecies,
   sourceId: string,
+  edition: string,
 ): Prisma.ContentRaceCreateManyInput {
   const documentKey = raw.document.key
   const lineageTraitName = LINEAGE_TRAIT_BY_RACE[raw.name]
@@ -187,6 +188,7 @@ export function transformRace(
     slug: logical.slug,
     sourceId: logical.sourceId,
     name: logical.name,
+    edition,
     size: toJsonString(logical.size) as string,
     speed: toJsonString(logical.speed) as string,
     traits: toJsonString(logical.traits) as string,
@@ -201,6 +203,7 @@ export function transformSubspecies(
   raw: Open5eSpecies,
   parentRaceId: string,
   sourceId: string,
+  edition: string,
 ): Prisma.ContentSubraceCreateManyInput {
   const documentKey = raw.document.key
   const sizeTrait = findTrait(raw.traits, 'Size')
@@ -222,6 +225,7 @@ export function transformSubspecies(
     sourceId: logical.sourceId,
     raceId: logical.raceId ?? null,
     name: logical.name,
+    edition,
     description: logical.description ?? null,
     size: toJsonString(logical.size),
     speed: toJsonString(logical.speed),
@@ -237,6 +241,7 @@ export function synthesizeSubracesFromLineageTrait(
   raceId: string,
   raw: Open5eSpecies,
   sourceId: string,
+  edition: string,
 ): Prisma.ContentSubraceCreateManyInput[] {
   const lineageTraitName = LINEAGE_TRAIT_BY_RACE[raw.name]
   const parser = LINEAGE_PARSERS[raw.name]
@@ -264,6 +269,7 @@ export function synthesizeSubracesFromLineageTrait(
       sourceId: logical.sourceId,
       raceId: logical.raceId ?? null,
       name: logical.name,
+      edition,
       description: logical.description ?? null,
       size: toJsonString(logical.size),
       speed: toJsonString(logical.speed),

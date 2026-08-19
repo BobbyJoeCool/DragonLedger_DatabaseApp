@@ -9,7 +9,8 @@ interface ConditionSeed {
   name: string
   description: string
   effects: string | null
-  extraData: string
+  edition: string
+  extraData: string | null
 }
 
 const CONDITIONS_5E: ConditionSeed[] = [
@@ -19,7 +20,8 @@ const CONDITIONS_5E: ConditionSeed[] = [
     description:
       "A blinded creature can't see and automatically fails any ability check that requires sight. Attack rolls against the creature have advantage, and the creature's attack rolls have disadvantage.",
     effects: null,
-    extraData: JSON.stringify({ edition: '5e' }),
+    edition: '5e',
+    extraData: null,
   },
   {
     slug: 'charmed-5e',
@@ -27,7 +29,8 @@ const CONDITIONS_5E: ConditionSeed[] = [
     description:
       "A charmed creature can't attack the charmer or target the charmer with harmful abilities or magical effects. The charmer has advantage on any ability check to interact socially with the creature.",
     effects: null,
-    extraData: JSON.stringify({ edition: '5e' }),
+    edition: '5e',
+    extraData: null,
   },
   {
     slug: 'deafened-5e',
@@ -35,7 +38,8 @@ const CONDITIONS_5E: ConditionSeed[] = [
     description:
       "A deafened creature can't hear and automatically fails any ability check that requires hearing.",
     effects: null,
-    extraData: JSON.stringify({ edition: '5e' }),
+    edition: '5e',
+    extraData: null,
   },
   {
     slug: 'exhaustion-5e',
@@ -44,7 +48,8 @@ const CONDITIONS_5E: ConditionSeed[] = [
       'Some special abilities and environmental hazards lead to exhaustion. Exhaustion is measured in six levels, each stacking with previous levels.',
     effects:
       'Level 1: Disadvantage on ability checks\nLevel 2: Speed halved\nLevel 3: Disadvantage on attack rolls and saving throws\nLevel 4: Hit point maximum halved\nLevel 5: Speed reduced to 0\nLevel 6: Death',
-    extraData: JSON.stringify({ edition: '5e' }),
+    edition: '5e',
+    extraData: null,
   },
   {
     slug: 'frightened-5e',
@@ -52,7 +57,8 @@ const CONDITIONS_5E: ConditionSeed[] = [
     description:
       "A frightened creature has disadvantage on ability checks and attack rolls while the source of its fear is within line of sight. The creature can't willingly move closer to the source of its fear.",
     effects: null,
-    extraData: JSON.stringify({ edition: '5e' }),
+    edition: '5e',
+    extraData: null,
   },
   {
     slug: 'grappled-5e',
@@ -60,14 +66,16 @@ const CONDITIONS_5E: ConditionSeed[] = [
     description:
       "A grappled creature's speed becomes 0, and it can't benefit from any bonus to its speed. The condition ends if the grappler is incapacitated. The condition also ends if an effect removes the grappled creature from the reach of the grappler or grappling effect.",
     effects: null,
-    extraData: JSON.stringify({ edition: '5e' }),
+    edition: '5e',
+    extraData: null,
   },
   {
     slug: 'incapacitated-5e',
     name: 'Incapacitated',
     description: "An incapacitated creature can't take actions or reactions.",
     effects: null,
-    extraData: JSON.stringify({ edition: '5e' }),
+    edition: '5e',
+    extraData: null,
   },
   {
     slug: 'invisible-5e',
@@ -75,7 +83,8 @@ const CONDITIONS_5E: ConditionSeed[] = [
     description:
       "An invisible creature is impossible to see without the aid of magic or a special sense. The creature is heavily obscured for purposes of hiding. The creature's location can be detected by noise it makes or tracks it leaves. Attack rolls against the creature have disadvantage, and the creature's attack rolls have advantage.",
     effects: null,
-    extraData: JSON.stringify({ edition: '5e' }),
+    edition: '5e',
+    extraData: null,
   },
   {
     slug: 'paralyzed-5e',
@@ -83,7 +92,8 @@ const CONDITIONS_5E: ConditionSeed[] = [
     description:
       "A paralyzed creature is incapacitated and can't move or speak. The creature automatically fails Strength and Dexterity saving throws. Attack rolls against the creature have advantage. Any attack that hits the creature is a critical hit if the attacker is within 5 feet of the creature.",
     effects: null,
-    extraData: JSON.stringify({ edition: '5e' }),
+    edition: '5e',
+    extraData: null,
   },
   {
     slug: 'petrified-5e',
@@ -92,14 +102,16 @@ const CONDITIONS_5E: ConditionSeed[] = [
       'A petrified creature is transformed, along with any nonmagical object it is wearing or carrying, into a solid inanimate substance. Its weight increases by a factor of ten, and it ceases aging. The creature is incapacitated, can\'t move or speak, and is unaware of its surroundings.',
     effects:
       'Attack rolls against the creature have advantage. The creature automatically fails Strength and Dexterity saving throws. Resistance to all damage. Immune to poison and disease (existing effects are suspended, not neutralized).',
-    extraData: JSON.stringify({ edition: '5e' }),
+    edition: '5e',
+    extraData: null,
   },
   {
     slug: 'poisoned-5e',
     name: 'Poisoned',
     description: 'A poisoned creature has disadvantage on attack rolls and ability checks.',
     effects: null,
-    extraData: JSON.stringify({ edition: '5e' }),
+    edition: '5e',
+    extraData: null,
   },
   {
     slug: 'prone-5e',
@@ -107,7 +119,8 @@ const CONDITIONS_5E: ConditionSeed[] = [
     description:
       "A prone creature's only movement option is to crawl, unless it stands up and thereby ends the condition. The creature has disadvantage on attack rolls. An attack roll against the creature has advantage if the attacker is within 5 feet; otherwise, the attack roll has disadvantage.",
     effects: null,
-    extraData: JSON.stringify({ edition: '5e' }),
+    edition: '5e',
+    extraData: null,
   },
   {
     slug: 'restrained-5e',
@@ -115,7 +128,8 @@ const CONDITIONS_5E: ConditionSeed[] = [
     description:
       "A restrained creature's speed becomes 0, and it can't benefit from any bonus to its speed. Attack rolls against the creature have advantage, and the creature's attack rolls have disadvantage. The creature has disadvantage on Dexterity saving throws.",
     effects: null,
-    extraData: JSON.stringify({ edition: '5e' }),
+    edition: '5e',
+    extraData: null,
   },
   {
     slug: 'stunned-5e',
@@ -123,7 +137,8 @@ const CONDITIONS_5E: ConditionSeed[] = [
     description:
       "A stunned creature is incapacitated, can't move, and can speak only falteringly. The creature automatically fails Strength and Dexterity saving throws. Attack rolls against the creature have advantage.",
     effects: null,
-    extraData: JSON.stringify({ edition: '5e' }),
+    edition: '5e',
+    extraData: null,
   },
   {
     slug: 'unconscious-5e',
@@ -131,7 +146,8 @@ const CONDITIONS_5E: ConditionSeed[] = [
     description:
       "An unconscious creature is incapacitated, can't move or speak, and is unaware of its surroundings. The creature drops whatever it's holding and falls prone. The creature automatically fails Strength and Dexterity saving throws. Attack rolls against the creature have advantage. Any attack that hits the creature is a critical hit if the attacker is within 5 feet.",
     effects: null,
-    extraData: JSON.stringify({ edition: '5e' }),
+    edition: '5e',
+    extraData: null,
   },
 ]
 
@@ -142,7 +158,8 @@ const CONDITIONS_5_5E: ConditionSeed[] = [
     description:
       "A blinded creature can't see and automatically fails any ability check that requires sight. Attack rolls against the creature have advantage, and the creature's attack rolls have disadvantage.",
     effects: null,
-    extraData: JSON.stringify({ edition: '5.5e' }),
+    edition: '5.5e',
+    extraData: null,
   },
   {
     slug: 'charmed-2024',
@@ -150,7 +167,8 @@ const CONDITIONS_5_5E: ConditionSeed[] = [
     description:
       "A charmed creature can't attack the charmer or target the charmer with damaging abilities or magical effects. The charmer has advantage on any ability check to interact socially with the creature.",
     effects: null,
-    extraData: JSON.stringify({ edition: '5.5e' }),
+    edition: '5.5e',
+    extraData: null,
   },
   {
     slug: 'deafened-2024',
@@ -158,7 +176,8 @@ const CONDITIONS_5_5E: ConditionSeed[] = [
     description:
       "A deafened creature can't hear and automatically fails any ability check that requires hearing.",
     effects: null,
-    extraData: JSON.stringify({ edition: '5.5e' }),
+    edition: '5.5e',
+    extraData: null,
   },
   {
     slug: 'exhaustion-2024',
@@ -167,7 +186,8 @@ const CONDITIONS_5_5E: ConditionSeed[] = [
       "While you have the Exhaustion condition, you experience the following effects. Exhaustion levels stack; each time you receive this condition, your exhaustion level increases by 1. You die if your exhaustion level is 10.",
     effects:
       "Each level of Exhaustion reduces all d20 Test rolls by 2. Your Speed is reduced by a number of feet equal to 5 times your Exhaustion level. At Exhaustion level 10, you die.",
-    extraData: JSON.stringify({ edition: '5.5e' }),
+    edition: '5.5e',
+    extraData: null,
   },
   {
     slug: 'frightened-2024',
@@ -175,7 +195,8 @@ const CONDITIONS_5_5E: ConditionSeed[] = [
     description:
       "A frightened creature has disadvantage on ability checks and attack rolls while the source of its fear is within line of sight. The creature can't willingly move closer to the source of its fear.",
     effects: null,
-    extraData: JSON.stringify({ edition: '5.5e' }),
+    edition: '5.5e',
+    extraData: null,
   },
   {
     slug: 'grappled-2024',
@@ -183,7 +204,8 @@ const CONDITIONS_5_5E: ConditionSeed[] = [
     description:
       "A grappled creature's speed becomes 0, and it can't benefit from any bonus to its speed. The condition ends if the grappler is incapacitated or if an effect moves the grappled creature outside the grappler's reach.",
     effects: null,
-    extraData: JSON.stringify({ edition: '5.5e' }),
+    edition: '5.5e',
+    extraData: null,
   },
   {
     slug: 'incapacitated-2024',
@@ -191,7 +213,8 @@ const CONDITIONS_5_5E: ConditionSeed[] = [
     description:
       "An incapacitated creature can't take actions, bonus actions, or reactions.",
     effects: null,
-    extraData: JSON.stringify({ edition: '5.5e' }),
+    edition: '5.5e',
+    extraData: null,
   },
   {
     slug: 'invisible-2024',
@@ -199,7 +222,8 @@ const CONDITIONS_5_5E: ConditionSeed[] = [
     description:
       "An invisible creature is impossible to see without the aid of magic or a special sense. The creature is heavily obscured for purposes of hiding. The creature's location can be detected by noise it makes or tracks it leaves. Attack rolls against the creature have disadvantage, and the creature's attack rolls have advantage.",
     effects: null,
-    extraData: JSON.stringify({ edition: '5.5e' }),
+    edition: '5.5e',
+    extraData: null,
   },
   {
     slug: 'paralyzed-2024',
@@ -207,7 +231,8 @@ const CONDITIONS_5_5E: ConditionSeed[] = [
     description:
       "A paralyzed creature is incapacitated and can't move or speak. The creature automatically fails Strength and Dexterity saving throws. Attack rolls against the creature have advantage. Any attack that hits the creature is a critical hit if the attacker is within 5 feet of the creature.",
     effects: null,
-    extraData: JSON.stringify({ edition: '5.5e' }),
+    edition: '5.5e',
+    extraData: null,
   },
   {
     slug: 'petrified-2024',
@@ -216,14 +241,16 @@ const CONDITIONS_5_5E: ConditionSeed[] = [
       'A petrified creature is transformed, along with any nonmagical object it is wearing or carrying, into a solid inanimate substance. Its weight increases by a factor of ten, and it ceases aging. The creature is incapacitated, can\'t move or speak, and is unaware of its surroundings.',
     effects:
       'Attack rolls against the creature have advantage. The creature automatically fails Strength and Dexterity saving throws. Resistance to all damage. Immune to poison and disease (existing effects are suspended, not neutralized).',
-    extraData: JSON.stringify({ edition: '5.5e' }),
+    edition: '5.5e',
+    extraData: null,
   },
   {
     slug: 'poisoned-2024',
     name: 'Poisoned',
     description: 'A poisoned creature has disadvantage on attack rolls and ability checks.',
     effects: null,
-    extraData: JSON.stringify({ edition: '5.5e' }),
+    edition: '5.5e',
+    extraData: null,
   },
   {
     slug: 'prone-2024',
@@ -231,7 +258,8 @@ const CONDITIONS_5_5E: ConditionSeed[] = [
     description:
       "A prone creature's only movement option is to crawl, unless it stands up and thereby ends the condition. The creature has disadvantage on attack rolls. An attack roll against the creature has advantage if the attacker is within 5 feet; otherwise, the attack roll has disadvantage.",
     effects: null,
-    extraData: JSON.stringify({ edition: '5.5e' }),
+    edition: '5.5e',
+    extraData: null,
   },
   {
     slug: 'restrained-2024',
@@ -239,7 +267,8 @@ const CONDITIONS_5_5E: ConditionSeed[] = [
     description:
       "A restrained creature's speed becomes 0, and it can't benefit from any bonus to its speed. Attack rolls against the creature have advantage, and the creature's attack rolls have disadvantage. The creature has disadvantage on Dexterity saving throws.",
     effects: null,
-    extraData: JSON.stringify({ edition: '5.5e' }),
+    edition: '5.5e',
+    extraData: null,
   },
   {
     slug: 'stunned-2024',
@@ -247,7 +276,8 @@ const CONDITIONS_5_5E: ConditionSeed[] = [
     description:
       "A stunned creature is incapacitated, can't move, and can speak only falteringly. The creature automatically fails Strength and Dexterity saving throws. Attack rolls against the creature have advantage.",
     effects: null,
-    extraData: JSON.stringify({ edition: '5.5e' }),
+    edition: '5.5e',
+    extraData: null,
   },
   {
     slug: 'unconscious-2024',
@@ -255,7 +285,8 @@ const CONDITIONS_5_5E: ConditionSeed[] = [
     description:
       "An unconscious creature is incapacitated, can't move or speak, and is unaware of its surroundings. The creature drops whatever it's holding and falls prone. The creature automatically fails Strength and Dexterity saving throws. Attack rolls against the creature have advantage. Any attack that hits the creature is a critical hit if the attacker is within 5 feet.",
     effects: null,
-    extraData: JSON.stringify({ edition: '5.5e' }),
+    edition: '5.5e',
+    extraData: null,
   },
 ]
 
@@ -316,6 +347,7 @@ async function main() {
         name: condition.name,
         description: condition.description,
         effects: condition.effects,
+        edition: condition.edition,
         extraData: condition.extraData,
       },
       create: {
@@ -324,6 +356,7 @@ async function main() {
         name: condition.name,
         description: condition.description,
         effects: condition.effects,
+        edition: condition.edition,
         extraData: condition.extraData,
       },
     })

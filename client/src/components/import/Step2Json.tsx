@@ -13,6 +13,7 @@ const inputClass = 'w-full rounded-md border px-3 py-2 text-sm focus:outline-non
 export function Step2Json({ onBack, onDone }: Step2JsonProps) {
   const [sourceId, setSourceId] = useState('')
   const [sourceName, setSourceName] = useState('')
+  const [edition, setEdition] = useState<'5e' | '5.5e'>('5.5e')
   const [filePath, setFilePath] = useState<string | null>(null)
   const [jobId, setJobId] = useState<string | null>(null)
   const [starting, setStarting] = useState(false)
@@ -34,7 +35,7 @@ export function Step2Json({ onBack, onDone }: Step2JsonProps) {
     setError('')
     const res = await apiFetch('/api/import/file', {
       method: 'POST',
-      body: JSON.stringify({ sourceId, sourceName, filePath }),
+      body: JSON.stringify({ sourceId, sourceName, edition, filePath }),
     })
     if (res.status === 202) {
       const body = await res.json()
@@ -72,6 +73,27 @@ export function Step2Json({ onBack, onDone }: Step2JsonProps) {
           placeholder="My Homebrew Content"
           className={inputClass}
         />
+      </div>
+      <div>
+        <label className="mb-2 block text-sm font-medium">Edition</label>
+        <div className="inline-flex rounded-lg border p-0.5" role="radiogroup">
+          {(['5.5e', '5e'] as const).map((ed) => (
+            <button
+              key={ed}
+              type="button"
+              role="radio"
+              aria-checked={edition === ed}
+              onClick={() => setEdition(ed)}
+              className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+                edition === ed
+                  ? 'bg-accent text-accent-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {ed}
+            </button>
+          ))}
+        </div>
       </div>
       {isElectron() ? (
         <button

@@ -1,6 +1,6 @@
 import type { Request } from 'express'
 import { z } from 'zod'
-import { Prisma } from '@prisma/client'
+import { Prisma, type SourceType } from '@prisma/client'
 import { prisma } from '../../db/client.js'
 
 export const DEFAULT_LIMIT = 50
@@ -9,6 +9,7 @@ export const MAX_LIMIT = 200
 export interface ListQuery {
   sourceIds: string[]
   sourceType?: string
+  edition?: string
   q?: string
   page: number
   limit: number
@@ -45,10 +46,12 @@ export function parseListQuery(req: Request): ListQuery {
   const sourceIds = Array.isArray(source) ? source : source ? [source] : []
 
   const sourceType = (query.sourceType as string | undefined) || undefined
+  const edition = (query.edition as string | undefined) || undefined
 
   return {
     sourceIds,
     sourceType,
+    edition,
     q: (query.q as string | undefined) || undefined,
     page,
     limit,
@@ -64,10 +67,12 @@ export function parseListQuery(req: Request): ListQuery {
 export function sourceWhere(
   sourceIds: string[],
   sourceType?: string,
-): { sourceId?: { in: string[] }; source?: { type: string } } {
+  edition?: string,
+) {
   return {
     ...(sourceIds.length > 0 ? { sourceId: { in: sourceIds } } : {}),
-    ...(sourceType ? { source: { type: sourceType } } : {}),
+    ...(sourceType ? { source: { is: { type: sourceType as SourceType } } } : {}),
+    ...(edition ? { edition } : {}),
   }
 }
 

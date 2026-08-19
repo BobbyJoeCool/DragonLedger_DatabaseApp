@@ -6,7 +6,7 @@ import { loadFixtureResult } from './fixtures.js'
 describe('transformRace', () => {
   it('extracts size/speed from named traits and excludes the lineage trait from base traits', () => {
     const raw = loadFixtureResult<Open5eSpecies>('elf.json')
-    const row = transformRace(raw, 'test-source')
+    const row = transformRace(raw, 'test-source', '5.5e')
 
     expect(row.slug).toBe('elf')
     expect(JSON.parse(row.size)).toEqual(['medium'])
@@ -25,7 +25,7 @@ describe('transformRace', () => {
 describe('synthesizeSubracesFromLineageTrait', () => {
   it("parses Elf's 4-column lineage table into 3 subraces named after the table row", () => {
     const raw = loadFixtureResult<Open5eSpecies>('elf.json')
-    const subraces = synthesizeSubracesFromLineageTrait('race-id', raw, 'test-source')
+    const subraces = synthesizeSubracesFromLineageTrait('race-id', raw, 'test-source', '5.5e')
 
     expect(subraces.map((s) => s.name).sort()).toEqual(['Drow', 'High Elf', 'Wood Elf'])
     const woodElf = subraces.find((s) => s.name === 'Wood Elf')!
@@ -38,7 +38,7 @@ describe('synthesizeSubracesFromLineageTrait', () => {
 
   it("parses Dragonborn's 2-column ancestor/damage-type table into 10 subraces", () => {
     const raw = loadFixtureResult<Open5eSpecies>('sp_Dragonborn.json')
-    const subraces = synthesizeSubracesFromLineageTrait('race-id', raw, 'test-source')
+    const subraces = synthesizeSubracesFromLineageTrait('race-id', raw, 'test-source', '5.5e')
 
     expect(subraces).toHaveLength(10)
     const black = subraces.find((s) => s.name === 'Black')!
@@ -47,14 +47,14 @@ describe('synthesizeSubracesFromLineageTrait', () => {
 
   it("parses Gnome's bold-paragraph prose (no table) into 2 options", () => {
     const raw = loadFixtureResult<Open5eSpecies>('sp_Gnome.json')
-    const subraces = synthesizeSubracesFromLineageTrait('race-id', raw, 'test-source')
+    const subraces = synthesizeSubracesFromLineageTrait('race-id', raw, 'test-source', '5.5e')
 
     expect(subraces.map((s) => s.name).sort()).toEqual(['Forest Gnome', 'Rock Gnome'])
   })
 
   it("parses Goliath's dash-bullet prose, naming each option after its parenthetical ancestor", () => {
     const raw = loadFixtureResult<Open5eSpecies>('sp_Goliath.json')
-    const subraces = synthesizeSubracesFromLineageTrait('race-id', raw, 'test-source')
+    const subraces = synthesizeSubracesFromLineageTrait('race-id', raw, 'test-source', '5.5e')
 
     expect(subraces.map((s) => s.name).sort()).toEqual(
       [
@@ -70,13 +70,13 @@ describe('synthesizeSubracesFromLineageTrait', () => {
 
   it("parses Tiefling's 4-column legacy table", () => {
     const raw = loadFixtureResult<Open5eSpecies>('sp_Tiefling.json')
-    const subraces = synthesizeSubracesFromLineageTrait('race-id', raw, 'test-source')
+    const subraces = synthesizeSubracesFromLineageTrait('race-id', raw, 'test-source', '5.5e')
 
     expect(subraces.map((s) => s.name).sort()).toEqual(['Abyssal', 'Chthonic', 'Infernal'])
   })
 
   it('returns no subraces for a race with no lineage trait', () => {
     const raw = loadFixtureResult<Open5eSpecies>('sp_Dwarf.json')
-    expect(synthesizeSubracesFromLineageTrait('race-id', raw, 'test-source')).toEqual([])
+    expect(synthesizeSubracesFromLineageTrait('race-id', raw, 'test-source', '5.5e')).toEqual([])
   })
 })

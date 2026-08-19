@@ -33,7 +33,7 @@ describe('composeAttackDice', () => {
 describe('transformMonster (Goblin Warrior — simple)', () => {
   it('maps core fields and converts the float CR to a display string', () => {
     const raw = loadFixtureResult<Open5eCreature>('goblinw.json')
-    const row = transformMonster(raw, 'test-source')
+    const row = transformMonster(raw, 'test-source', '5.5e')
 
     expect(row.challengeRating).toBe('1/4')
     expect(row.size).toBe('small')
@@ -46,7 +46,7 @@ describe('transformMonster (Goblin Warrior — simple)', () => {
 
   it('stores all six saving throw values as given, not filtered to proficient-only', () => {
     const raw = loadFixtureResult<Open5eCreature>('goblinw.json')
-    const row = transformMonster(raw, 'test-source')
+    const row = transformMonster(raw, 'test-source', '5.5e')
     const savingThrows = JSON.parse(row.savingThrows!)
     expect(Object.keys(savingThrows)).toHaveLength(6)
   })
@@ -55,7 +55,7 @@ describe('transformMonster (Goblin Warrior — simple)', () => {
 describe('transformMonster (Archmage — complex, spellcasting)', () => {
   it('parses the Spellcasting action into extraData.spellcasting, additive to the raw action entry', () => {
     const raw = loadFixtureResult<Open5eCreature>('archmage.json')
-    const row = transformMonster(raw, 'test-source')
+    const row = transformMonster(raw, 'test-source', '5.5e')
 
     const extra = JSON.parse(row.extraData!)
     expect(extra.spellcasting.ability).toBe('Intelligence')
@@ -72,14 +72,14 @@ describe('transformMonster (Archmage — complex, spellcasting)', () => {
   it('infers proficiency bonus from CR when the raw field is null', () => {
     const raw = loadFixtureResult<Open5eCreature>('archmage.json')
     expect(raw.proficiency_bonus).toBeNull()
-    const row = transformMonster(raw, 'test-source')
+    const row = transformMonster(raw, 'test-source', '5.5e')
     const extra = JSON.parse(row.extraData!)
     expect(extra.proficiencyBonus).toBe(inferProficiencyBonus(12))
   })
 
   it('writes experiencePoints to its own column (Phase 2.6), not extraData', () => {
     const raw = loadFixtureResult<Open5eCreature>('archmage.json')
-    const row = transformMonster(raw, 'test-source')
+    const row = transformMonster(raw, 'test-source', '5.5e')
     expect(row.experiencePoints).toBe(8400)
     const extra = JSON.parse(row.extraData!)
     expect(extra.experiencePoints).toBeUndefined()
@@ -88,7 +88,7 @@ describe('transformMonster (Archmage — complex, spellcasting)', () => {
   it('parses the real damage_immunities_display/condition_immunities_display prose into the unified {types,nonmagical,bypassedBy} shape (Phase 2.6)', () => {
     const raw = loadFixtureResult<Open5eCreature>('archmage.json')
     expect(raw.resistances_and_immunities.damage_immunities_display).toBe('psychic')
-    const row = transformMonster(raw, 'test-source')
+    const row = transformMonster(raw, 'test-source', '5.5e')
     expect(JSON.parse(row.damageImmunities!)).toEqual([
       { types: ['psychic'], nonmagical: false, bypassedBy: null },
     ])

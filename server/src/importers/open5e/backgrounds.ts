@@ -42,6 +42,7 @@ function parseAbilityScoreBenefit(desc: string) {
 export function transformBackground(
   raw: Open5eBackground,
   sourceId: string,
+  edition: string,
 ): Prisma.ContentBackgroundCreateManyInput {
   const documentKey = raw.document.key
 
@@ -119,6 +120,7 @@ export function transformBackground(
     slug: logical.slug,
     sourceId: logical.sourceId,
     name: logical.name,
+    edition,
     proficiencies: toJsonString(logical.proficiencies) as string,
     abilityBonuses: toJsonString(logical.abilityBonuses) as string,
     feature: toJsonString(logical.feature) as string,
