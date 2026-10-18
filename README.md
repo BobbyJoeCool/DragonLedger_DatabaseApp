@@ -8,6 +8,24 @@ This is a content management tool. It is intentionally simpler than DragonLedger
 
 ---
 
+## Screenshots
+
+*Shown with Open5e SRD 2024 content only.*
+
+![Browse: Monsters list with filters, edition toggle, and multi-select actions](Documentation/screenshots/browse-monsters.png)
+
+| Monster stat block (Parchment theme) | Same view in dark mode |
+|---|---|
+| ![Adult Red Dragon detail](Documentation/screenshots/monster.png) | ![Adult Red Dragon detail, dark mode](Documentation/screenshots/monster-dark.png) |
+| **Spell detail with scaling** | **Class detail with features** |
+| ![Fireball detail](Documentation/screenshots/spell.png) | ![Wizard class detail](Documentation/screenshots/class.png) |
+| **Create hub: hand-built forms per content type** | **Editing an existing entry** |
+| ![Create a new spell](Documentation/screenshots/create.png) | ![Edit monster form](Documentation/screenshots/edit.png) |
+| **Source management** | **Import wizard: Open5e, Compendium XML, or JSON** |
+| ![Sources screen](Documentation/screenshots/sources.png) | ![Import screen](Documentation/screenshots/import.png) |
+
+---
+
 ## What It Does
 
 | Feature | Description |
