@@ -1,5 +1,6 @@
 import path from 'node:path'
 import express from 'express'
+import helmet from 'helmet'
 import cors from 'cors'
 import { healthRouter } from './routes/health.js'
 import { authRouter } from './routes/auth.js'
@@ -24,6 +25,7 @@ const clientOrigin = process.env.CLIENT_ORIGIN ?? 'http://localhost:5173'
 
 export const app = express()
 
+app.use(helmet())
 app.use(cors({ origin: clientOrigin }))
 app.use(express.json())
 
